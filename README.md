@@ -22,13 +22,48 @@ This project is a microservice-based IoT system for managing smart parking lots.
 ## 🗂️ Repository Structure
 ```bash
 smart-parking-lot/
+├── README.md
+├── LICENSE
+├── .gitignore
+├── requirements.txt
+│
 ├── config/              # JSON configuration files
+│   ├── devices.json
+│   ├── settings.json
+│   └── users.json
+│
 ├── devices/             # Sensor and gate simulators
+│   ├── onspot_sensor.py
+│   ├── entrance_device.py
+│   └── exit_device.py
+│
 ├── services/            # REST/MQTT backend microservices
-├── frontend/            # UI, map, ThingSpeak, display logic
+│   ├── parking_control/
+│   │   └── app.py
+│   ├── payment/
+│   │   └── pay_api.py
+│   ├── timer_control/
+│   │   └── timer.py
+│   └── telegram_bot/
+│       └── bot.py
+│
 ├── integration/         # Broker config and system wiring
-├── tests/               # Unit and integration tests
-└── README.md
+│   └── mqtt_broker_config/
+│       └── broker.py
+│
+├── frontend/            # UI, map, ThingSpeak, display logic
+│   ├── display_ui.html
+│   ├── map_embed.html
+│   └── thingspeak_integration.js
+│
+├── docs/                # API specs, diagrams
+│   ├── architecture.md
+│   ├── api_reference.md
+│   └── use_case.md
+│
+├── tests/               # Unit & integration tests
+│   └── test_devices.py
+
 
 ## 📡 Microservices Overview
 | Service | Description |

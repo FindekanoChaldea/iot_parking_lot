@@ -1,7 +1,6 @@
-
-// This is a sample json file for the devices.
-
 {
+  "_comment": "This is a sample json file for the devices.",
+
   "broker": {
     "host": "127.0.0.1",
     "port": 1883

@@ -1,0 +1,17 @@
+{
+    "_comment": "This is a sample json file for the settings.",
+
+    "telegram_bot_token": "YOUR_BOT_TOKEN_HERE",
+    "thingspeak": {
+      "channel_id": "123456",
+      "api_key": "ABC123DEF456"
+    },
+    "map": {
+      "default_lat": 45.808,
+      "default_lng": 9.086,
+      "zoom": 17
+    },
+    "api": {
+      "base_url": "http://localhost:5000"
+    }
+  }

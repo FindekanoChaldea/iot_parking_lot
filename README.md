@@ -42,6 +42,34 @@ This project is a microservice-based IoT system for managing smart parking lots.
 | `display_screen` | Shows availability using REST |
 | `thingSpeak_adapter` | Uploads data to ThingSpeak |
 
+## 🛠️ Getting Started
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/your-org/smart-parking-lot.git
+   cd smart-parking-lot
+
+	2.	Install dependencies:
+	```bash
+	pip install -r requirements.txt
+
+
+	3.	Start the MQTT broker (e.g., Mosquitto) and REST services:
+
+	python services/parking_control/app.py
+
+
+	4.	Launch devices and test interactions:
+
+	python devices/onspot_sensor.py
+
+
+	5.	Access frontend or test API endpoints with Postman or browser.
+
+## 📄 License
+
+	MIT License
+
 ## 👥 Team Members
 	•	Peichun Jiang (s330592)
 	•	Yudie Ren (s324480)

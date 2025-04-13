@@ -1,0 +1,1 @@
+# Check payment and allow exit

@@ -20,7 +20,7 @@ This project is a microservice-based IoT system for managing smart parking lots.
 - Telegram Bot API
 
 ## 🗂️ Repository Structure
-- smart-parking-lot/
+smart-parking-lot/
 ├── config/              # JSON configuration files
 ├── devices/             # Sensor and gate simulators
 ├── services/            # REST/MQTT backend microservices
@@ -49,22 +49,22 @@ This project is a microservice-based IoT system for managing smart parking lots.
    git clone https://github.com/your-org/smart-parking-lot.git
    cd smart-parking-lot
 
-	2.	Install dependencies:
+2. Install dependencies:
 	```bash
 	pip install -r requirements.txt
 
 
-	3.	Start the MQTT broker (e.g., Mosquitto) and REST services:
-
+3. Start the MQTT broker (e.g., Mosquitto) and REST services:
+	```bash
 	python services/parking_control/app.py
 
 
-	4.	Launch devices and test interactions:
-
+4.	Launch devices and test interactions:
+	```bash
 	python devices/onspot_sensor.py
 
 
-	5.	Access frontend or test API endpoints with Postman or browser.
+5.	Access frontend or test API endpoints with Postman or browser.
 
 ## 📄 License
 

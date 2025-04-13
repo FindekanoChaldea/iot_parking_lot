@@ -63,7 +63,7 @@ smart-parking-lot/
 │
 ├── tests/               # Unit & integration tests
 │   └── test_devices.py
-```bash
+```
 
 ## 📡 Microservices Overview
 | Service | Description |

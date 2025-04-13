@@ -89,16 +89,13 @@ smart-parking-lot/
 	```bash
 	pip install -r requirements.txt
 
-
 3. Start the MQTT broker (e.g., Mosquitto) and REST services:
 	```bash
 	python services/parking_control/app.py
 
-
 4.	Launch devices and test interactions:
 	```bash
 	python devices/onspot_sensor.py
-
 
 5.	Access frontend or test API endpoints with Postman or browser.
 

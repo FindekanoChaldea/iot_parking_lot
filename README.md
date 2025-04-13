@@ -20,6 +20,7 @@ This project is a microservice-based IoT system for managing smart parking lots.
 - Telegram Bot API
 
 ## 🗂️ Repository Structure
+```bash
 smart-parking-lot/
 ├── config/              # JSON configuration files
 ├── devices/             # Sensor and gate simulators
@@ -46,7 +47,7 @@ smart-parking-lot/
 
 1. Clone the repo:
    ```bash
-   git clone https://github.com/your-org/smart-parking-lot.git
+   git clone https://github.com/FindekanoChaldea/iot_parking_lot.git
    cd smart-parking-lot
 
 2. Install dependencies:

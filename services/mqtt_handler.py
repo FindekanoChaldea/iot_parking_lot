@@ -1,1 +1,0 @@
-#This code is for MQTT subscription and publishment.

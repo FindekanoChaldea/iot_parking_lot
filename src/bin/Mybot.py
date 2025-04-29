@@ -67,7 +67,7 @@ class Mybot():
 
 
 if __name__ == '__main__':
-	token = '7650726152:AAEeWUFX4MnC0P0iul_aNlJu5zYMkmb5cqc'
+	token = ''
 	broker = 'mqtt.eclipseprojects.io'
 	port = 1883
 	client_id = 'pippo13'

@@ -2,3 +2,6 @@
 
 # Your code here.
 
+from devices.ExitGate import Gate
+from devices.ExitScanner import Scanner
+

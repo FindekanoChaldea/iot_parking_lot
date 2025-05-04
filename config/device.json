@@ -1,0 +1,40 @@
+{
+    "devices": {
+      "entrance1": {
+        "id" : "Entrance1",
+        "gate_id": "EntranceGate1",
+        "info_topic_gate": "polito_parking/entrance/gate1/info",
+        "command_topic_gate": "polito_parking/entrance/gate1/command",
+        "scanner_id": "EntranceScanner1",
+        "info_topic_scanner": "polito_parking/entrance/scanner1/info",
+        "command_topic_scanner": "polito_parking/entrance/scanner1/command"
+      },
+      "entrance2": {
+        "id" : "Entrance2",
+        "gate_id": "EntranceGate2",
+        "info_topic_gate": "polito_parking/entrance/gate2/info",
+        "command_topic_gate": "polito_parking/entrance/gate2/command",
+        "scanner_id": "EntranceScanner2",
+        "info_topic_scanner": "polito_parking/entrance/scanner2/info",
+        "command_topic_scanner": "polito_parking/entrance/scanner2/command"
+      },
+      "exit1": {
+        "id" : "Exit1",
+        "gate_id": "ExitGate1",
+        "info_topic_gate": "polito_parking/exit/gate1/info",
+        "command_topic_gate": "polito_parking/exit/gate1/command",
+        "scanner_id": "ExitScanner1",
+        "info_topic_scanner": "polito_parking/exit/scanner1/info",
+        "command_topic_scanner": "polito_parking/exit/scanner1/command"
+      },
+      "exit2": {
+        "id" : "Exit2",
+        "gate_id": "ExitGate2",
+        "info_topic_gate": "polito_parking/exit/gate2/info",
+        "command_topic_gate": "polito_parking/exit/gate2/command",
+        "scanner_id": "ExitScanner2",
+        "info_topic_scanner": "polito_parking/exit/scanner2/info",
+        "command_topic_scanner": "polito_parking/exit/scanner2/command"
+      }
+    }
+}

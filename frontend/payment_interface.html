@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Interface</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Payment</h1>
+        <form id="paymentForm">
+            <label for="plate_license">Plate License:</label>
+            <input type="text" id="plate_license" name="plate_license" required style="flex: 1;">
+            <br><br>
+
+            <label for="paymentMethod">Choose Payment Method:</label><br>
+            <input type="radio" id="card" name="paymentMethod" value="card" required>
+            <label for="card">Card</label><br>
+            <input type="radio" id="cash" name="paymentMethod" value="cash" required>
+            <label for="cash">Cash</label><br><br>
+
+            <button type="button" class="button" onclick="confirm()">Confirm</button>
+        </form>
+
+        <!-- Section to display payment amount and Pay button -->
+        <div id="paymentDetails" style="display: none; margin-top: 20px;">
+            <h2>Payment Summary</h2>
+            <p id="plate_license_confirmed" style="font-size: 18px; font-weight: bold;"></p>
+            <p id="paymentAmount" style="font-size: 18px; font-weight: bold;"></p><span> €</span>
+            <button type="button" class="button" onclick="processPayment()">Pay</button>
+            <button type="button" class="button" onclick="goBack()">Go Back</button>
+        </div>
+
+        <p id="responseMessage" style="color: green; margin-top: 10px;"></p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -12,12 +12,16 @@ def generate_plate():
     return f"{letters}{digits}{end_letters}"
 n = 1
 plates = []
-while n < 100:
+while n < 200:
     car = generate_plate()
     plates.append(car)
     n += 1
 
 path = os.path.dirname(os.path.abspath(__file__))
 if len(plates) == len(set(plates)):
-    with open(f'{path}/fake_cars.json', 'w') as fp:
-	    json.dump(plates, fp)
+    part1 = plates[:100]
+    part2 = plates[100:200]
+    with open(f'{path}/fake_cars_1.json', 'w') as fp1:
+        json.dump(part1, fp1)
+    with open(f'{path}/fake_cars_2.json', 'w') as fp2:
+        json.dump(part2, fp2)

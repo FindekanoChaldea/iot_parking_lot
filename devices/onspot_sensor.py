@@ -1,1 +1,0 @@
-# Simulate occupancy changes and publish over MQTT

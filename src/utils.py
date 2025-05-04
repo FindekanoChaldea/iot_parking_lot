@@ -5,6 +5,8 @@ import json
 
 class CarStatus:
     BOOKED = 'booked'
+    ENTERED = 'entered'
+    CHARGED = 'charged'
     CHECKED = 'checked'
     PAID = 'paid'
     EXITED = 'exited'
@@ -16,6 +18,15 @@ class ScannerStatus:
 class GateStatus:
     CLOSE = 'close'
     OPEN = 'open'
+
+class PaymentMethod:
+    CASH = 'cash'
+    CARD = 'card'
+
+class PaymentStatus:
+    PENDING = 'pending'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
 
 class FileManager:    
     def __init__(self):

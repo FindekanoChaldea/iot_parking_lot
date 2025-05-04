@@ -5,39 +5,36 @@ import json
 from threading import Lock
 from src.utils import GateStatus as Status
 
-class EntranceGate():
+class Gate():
         
-    def __init__(self, client_id, broker, port, pub_topic, sub_topic):
+    def __init__(self, client_id, broker, port, info_topic, command_topic):
         self.client = client(client_id, broker, port, self)
         self.client.start()
-        self.topic = pub_topic
-        self.client.subscribe(sub_topic)
+        self.topic = info_topic
+        self.client.subscribe(command_topic)
         self.status = Status.CLOSE
         self.lock = Lock()
 
     def publish(self, message):
         self.client.publish(self.topic, message)
         print(f"Published message: {message} to topic: {self.topic}")
-        
+    
+    def open_close(self):
+        time.sleep(0.5)  # Simulate gate opening time
+    
     def notify(self, topic, payload): 
         with self.lock:
             payload = json.loads(payload)
             if payload == Status.OPEN:
                 self.status = Status.OPEN
-                time.sleep(0.5)  # Simulate gate open time and assume the car went through
+                self.open_close()  # Simulate gate open time and assume the car went through
                 self.status = Status.CLOSE
                 self.publish(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             elif payload == Status.CLOSE:
-                return "The parking is either full or fully booked, no reservation found"
+                return
             else :
                 Exception ("Unknown command received")
+    
+    def run(self):
+        self.client.loop_forever()
         
-if __name__ == "__main__":
-    client_id = 'EntranceGate'
-    broker = "mqtt.eclipseprojects.io"
-    port = 1883
-    pub_topic = 'polito_parking/entrance/gate/action'
-    sub_topic = 'polito_parking/entrance/gate/command'
-    entranceGate = EntranceGate(client_id, broker, port, pub_topic, sub_topic)
-    while True:
-        pass

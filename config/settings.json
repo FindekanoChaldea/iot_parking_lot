@@ -6,12 +6,17 @@
       "channel_id": "123456",
       "api_key": "ABC123DEF456"
     },
-    "map": {
-      "default_lat": 45.808,
-      "default_lng": 9.086,
-      "zoom": 17
-    },
+
     "api": {
       "base_url": "http://localhost:5000"
+    },
+
+    "MQTT":{
+      "broker": "mqtt.eclipseprojects.io",
+      "port": 1883
+    },
+    "payment_api": {
+      "host": "172.21.173.1",
+      "uri": "/payment"
     }
-  }
+}

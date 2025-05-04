@@ -1,116 +1,117 @@
 #This code is for MQTT subscription and publishment.
 import ParkingMQTT as client
 import src.Car as Car
+import  Payment
+import cherrypy
+import os
 import time
+import math
 from datetime import datetime
 import json
-from utils import FileManager, CarStatus, ScannerStatus, GateStatus
+from utils import FileManager, CarStatus, ScannerStatus, GateStatus, PaymentStatus, PaymentMethod
 
 class Parking():
-    
+    exposed = True
+        
     def __init__(self, client_id, broker, port):
         self.client = client(client_id, broker, port, self)
         self.num_lots = 100
         self.bookings = {}
         self.parkings = {}
         self.devices = {}
-        self.temp = {}
-        # self.pub_topics = []
-        # self.sub_topics = []
         self.client.start()
-
-    def book(self, plate_license):
+        self.free_stop = 20 ##seconds
+        self.checking_time = 5 ##seconds
+            
+    def book(self, plate_license, expecting_time):
         if len(self.parkings) + len(self.bookings) < 100:
-            booking = Car(plate_license, expecting_time = datetime.now())
+            booking = Car(plate_license, expecting_time = expecting_time)
             booking.save('../data/bookings.json')
             self.bookings[plate_license] = booking
         else:
             print("no more parking lots available")
     
-    def check_in(self, device):
-        if self.plate_license in self.bookings.keys():
-            booking = self.bookings[self.plate_license]
+    def check_in(self, plate_license, device):
+        if plate_license in self.bookings.keys():
+            booking = self.bookings[plate_license]
             if booking.is_expired():
                 print("Booking expired")
-                return
+                del self.bookings[plate_license]
             else:
-                self.publich(self.entrance_gate_pub, GateStatus.OPEN)
+                self.publich(device.command_topic_gate, GateStatus.OPEN)
                 while True:
-                    if self.entry_time:
-                        booking.enter(self.entry_time)
+                    if device.timestamp:
+                        booking.enter(device.timestamp)
+                        print(f"Booking Car {plate_license} checked in")
+                        device.timestamp = None
                         break
-                del self.bookings[self.plate_license]
-                self.parkings[self.plate_license] = booking
-                booking.status = CarStatus.CHECKED
-            fileManager = FileManager()
-            fileManager.find_and_delete('../data/bookings.json', self.plate_license)
-            self.plate_license = None
-            self.entry_time = None
-            self.publich(self.entrance_scanner_pub, ScannerStatus.STANDBY)
-            print("Booking checked in")
+                del self.bookings[plate_license]
+                self.parkings[plate_license] = booking
+                fileManager = FileManager()
+                fileManager.find_and_delete('../data/bookings.json', plate_license)
+                self.publich(device.command_topic_scanner, ScannerStatus.STANDBY)
+
         else:
             if len(self.parkings) + len(self.bookings) < 100:
-                self.publich(self.entrance_gate_pub, GateStatus.OPEN)
+                self.publich(device.command_topic_gate, GateStatus.OPEN)
                 while True:
-                    if self.entry_time:
-                        car = Car(self.plate_license, self.entry_time)
+                    if device.timestamp:
+                        car = Car(plate_license, device.timestamp)
+                        print(f"New Car {plate_license} checked in")
                         break
-                self.parkings[self.plate_license] = car
+                self.parkings[plate_license] = car
+                self.publich(device.command_topic_scanner, ScannerStatus.STANDBY)
             else:
                 print("no more parking lots available")
-                return
-            self.plate_license = None
-            self.entry_time = None
-            self.publich(self.entrance_scanner_pub, ScannerStatus.STANDBY)  
-            print("New car checked in")    
-                     
-    # def check_out(self):
-    #     if self.plate_license in self.parkings.keys():
-    #         car = self.parkings[self.plate_license]
-    #         while True:
-    #             if self.exit_time:
-    #                 car.exit(self.exit_time)
-    #                 break
-    #         if car.status == CarStatus.EXITED:
-    #             del self.parkings[self.plate_license]
-    #             fileManager = FileManager()
-    #             fileManager.find_and_delete('../data/parkings.json', self.plate_license)
-    #             print("Car checked out")
-    #         else:
-    #             print("need to pay before exit")
-    #     else:
-    #         print("Car not found in parking")
-    class Device:
-        def __init__(self, id, gate_id, pub_topic_gate, sub_topic_gate, pub_topic_scanner, sub_topic_scanner, scanner_id):
-            self.id = id
-            self.gate_id = gate_id
-            self.pub_topic_gate = pub_topic_gate
-            self.sub_topic_gate = sub_topic_gate
-            self.scanner_id = scanner_id
-            self.pub_topic_scanner = pub_topic_scanner
-            self.sub_topic_scanner = sub_topic_scanner
+    
+    def check(self, plate_license, method):
+        car = self.parkings[plate_license]
+        if car.status == CarStatus.CHARGED:
+            fee = 1.50 * math.ceil((self.payment_time - self.start_time).seconds / 3600)
+            car.check(fee, method, datetime.now())
+            return True   
+        elif (datetime.now() - car.start_time).seconds > self.free_stop:
+                car.status = CarStatus.CHARGED
+                self.check(plate_license, method)
+        else:
+            print("no payment needed")
+            return False
+        
+    def pay(self, plate_license):
+        car = self.parkings[plate_license]
+        if car.status == CarStatus.CHECKED:
+            if (datetime.now() - car.start_time).seconds > self.checking_time:
+                car.failPay()
+                return 'It has been to long, please retry'
+            else:
+                if car.pay():
+                    return (f"Car {plate_license} paid, please exit within {self.free_stop/60} minutes")
+                else:
+                    return ("Payment failed")
+                
+    def check_out(self, plate_license, device):
+        if plate_license in self.parkings.keys():
+            car = self.parkings[plate_license]           
+            if car.status == CarStatus.PAID or car.status == CarStatus.CHARGED:
+                if (datetime.now() - car.start_time).seconds/60 <= self.free_stop:                
+                    self.publich(device.command_topic_gate, GateStatus.OPEN)
+                    while True:
+                        if device.timestamp:
+                            car.exit(device.timestamp)
+                            print(f"Car {plate_license} exited")
+                            device.timestamp = None
+                            break               
+                    del self.parkings[plate_license]
+                    self.publich(device.command_topic_scanner, ScannerStatus.STANDBY)
+                else: 
+                    print("stay more than {self.free_stop} after payment/entering, need to pay")
+                    car.status = CarStatus.CHARGED
+                    
+            else:
+                print("need to pay before exit")
     
     def connect(self, device):
-        self.client.subscribe(device.pub_topic_scanner)
-        self.client.subscribe(device.pub_topic_gate)
         self.devices[device.id] = device
- 
-               
-    # def add_subscribe(self, entrance_scanner, entrance_gate, exit_scanner, exit_gate):
-    #     self.client.subscribe(entrance_scanner)
-    #     self.client.subscribe(entrance_gate)
-    #     self.client.subscribe(exit_scanner)
-    #     self.client.subscribe(exit_gate)
-    #     self.entrance_scanner_sub = entrance_scanner
-    #     self.entrance_gate_sub = entrance_gate
-    #     self.exit_scanner_sub = exit_scanner
-    #     self.exit_gate_sub = exit_gate
-            
-    # def add_publish(self, entrance_scanner, entrance_gate, exit_scanner, exit_gate):
-    #     self.entrance_scanner_pub = entrance_scanner
-    #     self.entrance_gate_pub = entrance_gate
-    #     self.exit_scanner_pub = exit_scanner
-    #     self.exit_gate_pub = exit_gate
     
     def publish(self, topic, message):
         self.client.publish(topic, message)
@@ -118,21 +119,73 @@ class Parking():
         
     def notify(self, topic, payload):
         payload = json.loads(payload)
-        if topic.split('/')[-2] == 'scanner':
+        if topic.split('/')[-2].startswith('scanner') and topic.split('/')[-3] == 'entrance':
             plate_license = payload
-            self.temp[topic] = plate_license
             for device in self.devices.values:
-                if device.pub_topic_scanner == topic:
+                if device.info_topic_scanner == topic:     
+                    self.check_in(plate_license, device) 
+                    break              
                     
-                    self.plate_license = plate_license
-                    self.entrance_scanner_pub = device.pub_topic_scanner
-                    self.entrance_gate_pub = device.pub_topic_gate
+        elif topic.split('/')[-2].startswith('gate'):
+            entry_time = datetime.strptime(payload, "%Y-%m-%d %H:%M:%S")
+            for device in self.devices.values:
+                if device.info_topic_gate == topic:     
+                    device.timestamp = entry_time              
                     break
-        elif topic.split('/')[-2] == 'gate':
-            self.entry_time = datetime.strptime(payload, "%Y-%m-%d %H:%M:%S")
             
     def run(self):
         while True:
             if self.plate_license:
                 self.check_in()
             time.sleep(0.1)
+    
+    def GET(self):
+        """
+        Serve the payment_interface.html file.
+        """
+        dir_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(dir_path, 'frontend', 'payment_interface.html')
+        if not os.path.exists(file_path):
+            raise cherrypy.HTTPError(404, "File not found")
+        cherrypy.response.headers['Content-Type'] = 'text/html'
+        return open(file_path, encoding='utf-8').read()
+
+    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out()
+    def POST(self, *uri):
+        """
+        Handle the payment processing logic.
+        """
+        try:
+            # Parse the JSON input
+            data = cherrypy.request.json
+            if len(uri) == 0:
+                raise cherrypy.HTTPError(400, "Missing required fields: plate_license or payment_method")
+            if uri[0] == 'check':
+                plate_license = data.get("plate_license")
+                payment_method = data.get("payment_method")
+                car = self.parkings[plate_license]
+                # Validate input
+                if not plate_license or not payment_method:
+                    raise cherrypy.HTTPError(400, "Missing required fields: plate_license or payment_method")
+                if plate_license not in self.parkings.keys():
+                    raise cherrypy.HTTPError(400, "Plate license not found in parking records.")
+                if self.check(plate_license, payment_method):
+                    charged = True
+                    amount = car.payment.amount
+                else:
+                    charged = False
+                    amount = 0
+                    message = "No payment needed"
+                return {"charged": charged, 'amount': amount, "message": message}
+            # Simulate payment processing
+            if uri[0] == 'process_payment':
+                plate_license = data.get("plate_license")
+                car = self.parkings[plate_license]
+                message = self.pay(plate_license)
+                # Return success response
+                return {"message": message}
+
+        except Exception as e:
+            cherrypy.log(f"Error processing payment: {str(e)}")
+            raise cherrypy.HTTPError(500, "An error occurred while processing the payment.")

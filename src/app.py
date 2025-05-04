@@ -3,22 +3,21 @@
 # Your code here.
 import cherrypy
 import os
-import Parking
-import config_loader
-import Device
+from Parking import Parking
+from config_loader import ConfigLoader
+from Device import DeviceManager
 
-config_loader = config_loader.ConfigLoader()
-devices = Device.DeviceManager()
+config_loader = ConfigLoader()
+deviceManager = DeviceManager()
 
 client_id = 'ParkingSystem'
 broker = config_loader.mqtt.broker
 port = config_loader.mqtt.port
 parking = Parking(client_id, broker, port)
-parking.connect(devices.entrance1)
-parking.connect(devices.entrance2)
-parking.connect(devices.exit1)
-parking.connect(devices.exit2)
-parking.run()
+parking.connect_device(deviceManager.entrance1)
+parking.connect_device(deviceManager.entrance2)
+parking.connect_device(deviceManager.exit1)
+parking.connect_device(deviceManager.exit2)
     
     
 config = {
@@ -40,6 +39,7 @@ config = {
 
 # Mount the PaymentService class and start the server
 cherrypy.server.socket_host = config_loader.payment_api.host
+cherrypy.server.socket_port = config_loader.payment_api.port
 cherrypy.tree.mount(parking, config_loader.payment_api.uri, config)
 cherrypy.engine.start()
 cherrypy.engine.block()

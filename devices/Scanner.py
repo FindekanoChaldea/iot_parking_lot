@@ -29,8 +29,4 @@ class Scanner():
         payload = json.loads(payload)
         if payload == Status.STANDBY:
             self.status = Status.STANDBY
-    
-    def run(self):
-        self.client.loop_forever()
-        
         

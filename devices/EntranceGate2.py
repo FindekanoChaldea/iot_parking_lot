@@ -7,4 +7,3 @@ if __name__ == "__main__":
     pub_topic = 'polito_parking/entrance/gate2/info'
     sub_topic = 'polito_parking/entrance/gate2/command'
     entranceGate = Gate(client_id, broker, port, pub_topic, sub_topic)
-    entranceGate.run()

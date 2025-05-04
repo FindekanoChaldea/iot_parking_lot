@@ -26,4 +26,5 @@ class ConfigLoader:
         def __init__(self, config_loader):
             self.config_loader = config_loader
             self.host = config_loader.config['payment_api']['host']
+            self.port = config_loader.config['payment_api']['port']
             self.uri = config_loader.config['payment_api']['uri']

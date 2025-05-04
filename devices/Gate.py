@@ -35,6 +35,4 @@ class Gate():
             else :
                 Exception ("Unknown command received")
     
-    def run(self):
-        self.client.loop_forever()
         

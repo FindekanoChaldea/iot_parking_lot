@@ -16,7 +16,8 @@
       "port": 1883
     },
     "payment_api": {
-      "host": "172.21.173.1",
+      "host": "127.0.0.1",
+      "port": 8080,
       "uri": "/payment"
     }
 }

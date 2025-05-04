@@ -3,7 +3,7 @@ import os
 import json
 
 folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-device_path = os.path.join(folder, 'config', 'settings.json')
+device_path = os.path.join(folder, 'config', 'devices.json')
 
 class Device: 
     def __init__(self, id, gate_id, info_topic_gate, command_topic_gate, scanner_id, info_topic_scanner, command_topic_scanner, timestamp = None):
@@ -24,6 +24,7 @@ class DeviceManager:
                 self.config = json.load(file)
             except json.JSONDecodeError:
                 pass
+            
         self.entrance1 = Device(self.config['devices']['entrance1']['id'],
                                     self.config['devices']['entrance1']['gate_id'],
                                     self.config['devices']['entrance1']['info_topic_gate'],
@@ -31,7 +32,7 @@ class DeviceManager:
                                     self.config['devices']['entrance1']['scanner_id'],
                                     self.config['devices']['entrance1']['info_topic_scanner'],
                                     self.config['devices']['entrance1']['command_topic_scanner'])
-        self.entracne2 = Device(self.config['devices']['entrance2']['id'],
+        self.entrance2 = Device(self.config['devices']['entrance2']['id'],
                                     self.config['devices']['entrance2']['gate_id'],
                                     self.config['devices']['entrance2']['info_topic_gate'],
                                     self.config['devices']['entrance2']['command_topic_gate'],

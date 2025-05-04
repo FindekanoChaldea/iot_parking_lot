@@ -1,7 +1,6 @@
 #This code is for MQTT subscription and publishment.
-import ParkingMQTT as client
-import src.Car as Car
-import  Payment
+from ParkingMQTT import ParkingMQTT as client
+from Car import Car
 import cherrypy
 import os
 import time
@@ -110,7 +109,7 @@ class Parking():
             else:
                 print("need to pay before exit")
     
-    def connect(self, device):
+    def connect_device(self, device):
         self.devices[device.id] = device
     
     def publish(self, topic, message):
@@ -132,12 +131,6 @@ class Parking():
                 if device.info_topic_gate == topic:     
                     device.timestamp = entry_time              
                     break
-            
-    def run(self):
-        while True:
-            if self.plate_license:
-                self.check_in()
-            time.sleep(0.1)
     
     def GET(self):
         """

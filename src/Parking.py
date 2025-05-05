@@ -90,26 +90,28 @@ class Parking():
                     return ("Payment failed")
                 
     def check_out(self, plate_license, device):
-        if plate_license in self.parkings.keys():
-            car = self.parkings[plate_license]           
-            if car.status == CarStatus.PAID or car.status == CarStatus.CHARGED:
-                if (datetime.now() - car.start_time).seconds/60 <= self.free_stop:                
-                    self.publich(device.command_topic_gate, GateStatus.OPEN)
-                    while True:
-                        if device.timestamp:
-                            car.exit(device.timestamp)
-                            print(f"Car {plate_license} exited")
-                            device.timestamp = None
-                            break               
-                    del self.parkings[plate_license]
-                    self.publich(device.command_topic_scanner, ScannerStatus.STANDBY)
-                else: 
-                    print("stay more than {self.free_stop} after payment/entering, need to pay")
-                    car.status = CarStatus.CHARGED
-                    
-            else:
-                print("need to pay before exit")
-    
+        def check_out_thread():
+            if plate_license in self.parkings.keys():
+                car = self.parkings[plate_license]           
+                if car.status == CarStatus.PAID or car.status == CarStatus.CHARGED:
+                    if (datetime.now() - car.start_time).seconds/60 <= self.free_stop:                
+                        self.publich(device.command_topic_gate, GateStatus.OPEN)
+                        while True:
+                            if device.timestamp:
+                                car.exit(device.timestamp)
+                                print(f"Car {plate_license} exited")
+                                device.timestamp = None
+                                break               
+                        del self.parkings[plate_license]
+                        self.publich(device.command_topic_scanner, ScannerStatus.STANDBY)
+                    else: 
+                        print("stay more than {self.free_stop} after payment/entering, need to pay")
+                        car.status = CarStatus.CHARGED
+                        
+                else:
+                    print("need to pay before exit")
+        threading.Thread(target=check_out_thread).start()
+        
     def connect_device(self, device):
         self.devices[device.id] = device
         self.client.subscribe(device.info_topic_scanner)
@@ -145,8 +147,7 @@ class Parking():
         file_path = os.path.join(dir_path, 'frontend', 'payment_interface.html')
         if not os.path.exists(file_path):
             raise cherrypy.HTTPError(404, "File not found")
-        cherrypy.response.headers['Content-Type'] = 'text/html'
-        return open(file_path, encoding='utf-8').read()
+        return open(file_path).read()
 
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()

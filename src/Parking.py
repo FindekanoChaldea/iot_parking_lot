@@ -20,13 +20,13 @@ class Parking():
         self.parkings = {}
         self.devices = {}
         self.client.start()
-        self.free_stop = 20 ##seconds
-        self.checking_time = 5 ##seconds
+        self.free_stop = 30 ##seconds
+        self.checking_time = 60 ##seconds
             
     def book(self, plate_license, expecting_time):
         if len(self.parkings) + len(self.bookings) < 100:
             booking = Car(plate_license, expecting_time = expecting_time)
-            booking.save('../data/bookings.json')
+            booking.book()
             self.bookings[plate_license] = booking
         else:
             print("no more parking lots available")
@@ -47,8 +47,7 @@ class Parking():
                     device.timestamp = None
                     del self.bookings[plate_license]
                     self.parkings[plate_license] = booking
-                    fileManager = FileManager()
-                    fileManager.find_and_delete('../data/bookings.json', plate_license)
+                    booking.cancel()       
                     self.publish(device.command_topic_scanner, ScannerStatus.STANDBY)
 
             else:
@@ -57,59 +56,66 @@ class Parking():
                     while not device.timestamp:
                         time.sleep(0.1)  # Ensure the loop doesn't block indefinitely
                     car = Car(plate_license, device.timestamp)
-                    print(f"New Car {plate_license} checked in")
+                    print(f"\n\nNew Car {plate_license} checked in\n\n")
+                    device.timestamp = None
                     self.parkings[plate_license] = car
                     self.publish(device.command_topic_scanner, ScannerStatus.STANDBY)
                 else:
-                    print("no more parking lots available")
+                    self.publish(device.command_topic_gate, GateStatus.CLOSE)
+                    print("\nno more parking lots available\n")
         threading.Thread(target=check_in_thread).start()
     
     def check(self, plate_license, method):
         car = self.parkings[plate_license]
         if car.status == CarStatus.CHARGED:
-            fee = 1.50 * math.ceil((self.payment_time - self.start_time).seconds / 3600)
+            fee = 1.50 * math.ceil((datetime.now() - car.start_time).seconds/3600)
             car.check(fee, method, datetime.now())
             return True   
         elif (datetime.now() - car.start_time).seconds > self.free_stop:
                 car.status = CarStatus.CHARGED
                 self.check(plate_license, method)
+                return True
         else:
-            print("no payment needed")
+            print("No payment needed")
             return False
         
     def pay(self, plate_license):
         car = self.parkings[plate_license]
         if car.status == CarStatus.CHECKED:
-            if (datetime.now() - car.start_time).seconds > self.checking_time:
+            if (datetime.now() - car.payment.time).seconds > self.checking_time:
                 car.failPay()
                 return 'It has been to long, please retry'
             else:
                 if car.pay():
-                    return (f"Car {plate_license} paid, please exit within {self.free_stop/60} minutes")
+                    return (f"Car {plate_license} paid, please exit within {math.ceil(self.free_stop/60)} minutes")
                 else:
                     return ("Payment failed")
                 
     def check_out(self, plate_license, device):
         def check_out_thread():
             if plate_license in self.parkings.keys():
-                car = self.parkings[plate_license]           
-                if car.status == CarStatus.PAID or car.status == CarStatus.CHARGED:
-                    if (datetime.now() - car.start_time).seconds/60 <= self.free_stop:                
-                        self.publich(device.command_topic_gate, GateStatus.OPEN)
-                        while True:
-                            if device.timestamp:
-                                car.exit(device.timestamp)
-                                print(f"Car {plate_license} exited")
-                                device.timestamp = None
-                                break               
-                        del self.parkings[plate_license]
-                        self.publich(device.command_topic_scanner, ScannerStatus.STANDBY)
-                    else: 
-                        print("stay more than {self.free_stop} after payment/entering, need to pay")
-                        car.status = CarStatus.CHARGED
-                        
-                else:
+                car = self.parkings[plate_license]  
+                if car.status == CarStatus.CHECKED:
+                    car.failPay()
+                    self.publish(device.command_topic_gate, GateStatus.CLOSE)
                     print("need to pay before exit")
+                    
+                elif car.status == CarStatus.PAID or car.status == CarStatus.CHARGED:
+                    if (datetime.now() - car.start_time).seconds <= self.free_stop:                
+                        self.publish(device.command_topic_gate, GateStatus.OPEN)
+                        while not device.timestamp:
+                            time.sleep(0.1)  # Ensure the loop doesn't block indefinitely
+                        car.exit(device.timestamp)
+                        print(f"Car {plate_license} exited")
+                        device.timestamp = None             
+                        del self.parkings[plate_license]
+                        self.publish(device.command_topic_scanner, ScannerStatus.STANDBY)
+                    else: 
+                        self.publish(device.command_topic_gate, GateStatus.CLOSE)
+                        print(f"{car.plate_license} stayed more than {math.ceil(self.free_stop/60)} minutes after payment/entering, need to pay")
+                        car.status = CarStatus.CHARGED                    
+                else:
+                    self.publish(device.command_topic_gate, GateStatus.OPEN)
         threading.Thread(target=check_out_thread).start()
         
     def connect_device(self, device):
@@ -125,19 +131,37 @@ class Parking():
         payload = json.loads(payload)
         if topic.split('/')[-2].startswith('scanner') and topic.split('/')[-3] == 'entrance':
             plate_license = payload
-            print(f"Scanner {topic.split('/')[-2]} detected plate: {payload}")
+            print(f"EntranceScanner {topic.split('/')[-2]} detected plate: {payload}")
             for device in self.devices.values():
                 if device.info_topic_scanner == topic:     
                     self.check_in(plate_license, device) 
                     break              
                     
-        elif topic.split('/')[-2].startswith('gate'):
+        elif topic.split('/')[-2].startswith('gate') and topic.split('/')[-3] == 'entrance':
             entry_time = datetime.strptime(payload, "%Y-%m-%d %H:%M:%S")
-            print(f"Gate {topic.split('/')[-2]} opened at: {payload}")
+            print(f"EntranceGate {topic.split('/')[-2]} opened at: {payload}")
             for device in self.devices.values():
                 if device.info_topic_gate == topic:     
                     device.timestamp = entry_time              
                     break
+        
+        elif topic.split('/')[-2].startswith('scanner') and topic.split('/')[-3] == 'exit':
+            plate_license = payload
+            print(f"ExitScanner {topic.split('/')[-2]} detected plate: {payload}")
+            for device in self.devices.values():
+                if device.info_topic_scanner == topic:     
+                    self.check_out(plate_license, device) 
+                    break              
+                    
+        elif topic.split('/')[-2].startswith('gate') and topic.split('/')[-3] == 'exit':
+            exit_time = datetime.strptime(payload, "%Y-%m-%d %H:%M:%S")
+            print(f"ExitGate {topic.split('/')[-2]} opened at: {payload}")
+            for device in self.devices.values():
+                if device.info_topic_gate == topic:     
+                    device.timestamp = exit_time              
+                    break       
+                
+            
     def run(self):
         def keep_alive():
             while True:
@@ -152,7 +176,7 @@ class Parking():
         file_path = os.path.join(dir_path, 'frontend', 'payment_interface.html')
         if not os.path.exists(file_path):
             raise cherrypy.HTTPError(404, "File not found")
-        return open(file_path).read()
+        return open(file_path, encoding = 'utf-8').read()
 
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()
@@ -160,36 +184,30 @@ class Parking():
         """
         Handle the payment processing logic.
         """
-        try:
-            # Parse the JSON input
-            data = cherrypy.request.json
-            if len(uri) == 0:
-                raise cherrypy.HTTPError(400, "Missing required fields: plate_license or payment_method")
-            if uri[0] == 'check':
-                plate_license = data.get("plate_license")
-                payment_method = data.get("payment_method")
-                car = self.parkings[plate_license]
-                # Validate input
-                if not plate_license or not payment_method:
-                    raise cherrypy.HTTPError(400, "Missing required fields: plate_license or payment_method")
-                if plate_license not in self.parkings.keys():
-                    raise cherrypy.HTTPError(400, "Plate license not found in parking records.")
-                if self.check(plate_license, payment_method):
-                    charged = True
-                    amount = car.payment.amount
-                else:
-                    charged = False
-                    amount = 0
-                    message = "No payment needed"
-                return {"charged": charged, 'amount': amount, "message": message}
-            # Simulate payment processing
-            if uri[0] == 'process_payment':
-                plate_license = data.get("plate_license")
-                car = self.parkings[plate_license]
-                message = self.pay(plate_license)
-                # Return success response
-                return {"message": message}
+        # Parse the JSON input
+        data = cherrypy.request.json
+        if len(uri) == 0:
+            raise cherrypy.HTTPError(400,"Missing required fields: plate_license or payment_method")
+        if uri[0] == 'check':
+            plate_license = data.get("plate_license")
+            payment_method = data.get("payment_method")                
+            if plate_license not in self.parkings.keys():
+                raise cherrypy.HTTPError(400,"Plate license not found in parking records")
+            car = self.parkings[plate_license]
+            if self.check(plate_license, payment_method):
+                charged = True
+                amount = car.payment.amount
+                message = f"Car {plate_license} checked, please pay in {math.ceil(self.checking_time/60)} minutes"
+            else:
+                charged = False
+                amount = 0
+                message = "Very short Period, No payment needed"
+            return {"charged": charged, 'amount': amount, "message": message}
+        # Simulate payment processing
+        if uri[0] == 'process_payment':
+            plate_license = data.get("plate_license")
+            car = self.parkings[plate_license]
+            message = self.pay(plate_license)
+            # Return success response
+            return {"message": message}
 
-        except Exception as e:
-            cherrypy.log(f"Error processing payment: {str(e)}")
-            raise cherrypy.HTTPError(500, "An error occurred while processing the payment.")

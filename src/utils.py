@@ -32,7 +32,11 @@ class FileManager:
     def __init__(self):
         pass
     
-    def add_fields(file_path, new_fields):
+    def abpath(self, relative_path):
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(script_dir, relative_path)
+        
+    def add_fields(self, file_path, new_fields):
         # Step 1: Check if the file exists
         if not os.path.exists(file_path):
             print(f"{file_path} does not exist!")
@@ -52,7 +56,7 @@ class FileManager:
         print(f"Updated {file_path} with new fields!")
     
     
-    def find_and_delete(file_path, plate_license):
+    def find_and_delete(self,file_path, plate_license):
         # Step 1: Check if the file exists
         if not os.path.exists(file_path):
             print(f"{file_path} does not exist!")

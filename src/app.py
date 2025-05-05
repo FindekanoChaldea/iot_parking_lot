@@ -4,6 +4,7 @@
 import cherrypy
 import os
 import time
+import json
 from Parking import Parking
 from config_loader import ConfigLoader
 from Device import DeviceManager
@@ -20,6 +21,14 @@ parking.connect_device(deviceManager.entrance2)
 parking.connect_device(deviceManager.exit1)
 parking.connect_device(deviceManager.exit2)   
 parking.run()   
+
+def handle_error(status, message, traceback, version):
+    cherrypy.response.headers['Content-Type'] = 'application/json'
+    return json.dumps({'message':message})
+
+cherrypy.config.update({
+    'error_page.default': handle_error
+})
 
 config = {
         '/': {

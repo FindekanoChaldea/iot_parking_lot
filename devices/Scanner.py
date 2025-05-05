@@ -19,7 +19,7 @@ class Scanner():
 
     def publish(self, message):
         self.client.publish(self.topic, message)
-        print(f"Published message: {message} to topic: {self.topic}")
+        print(f"Published message: {message} to topic: {self.topic}\n")
     
     def scan_plate(self, plate_license):
         while self.status == Status.SCANNED:

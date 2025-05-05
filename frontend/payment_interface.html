@@ -55,20 +55,145 @@
             <label for="cash">Cash</label>
             <br><br>
             
-            <button type="button" class="button" onclick="confirm()">Confirm</button>
+            <button type="button" class="button" onclick="confirmDetails()">Confirm</button>
         </form>
 
         <!-- Section to display payment amount and Pay button -->
         <div id="paymentDetails" style="display: none; margin-top: 20px;">
-            <h2>Payment Summary</h2>
-            <p id="plate_license_confirmed" style="font-size: 18px; font-weight: bold;"></p>
-            <p id="paymentAmount" style="font-size: 18px; font-weight: bold;"></p><span> €</span>
+            <p style="font-size: 18px; font-weight: bold;">
+                <span>Plate License:</span>
+                <span id="plate_license_confirmed"></span>
+            </p>
+            <p style="font-size: 18px; font-weight: bold;">
+                <span>Payment Amount:</span>
+                <span id="paymentAmount"></span> €
+            </p>
             <button type="button" class="button" onclick="processPayment()">Pay</button>
             <button type="button" class="button" onclick="goBack()">Go Back</button>
+        </div>
+        <div id = "newPay" style="display: none; justify-content: center; margin-top: 10px;">
+            <button type="button" class="button" onclick="reload()">New Pay</button>
         </div>
 
         <p id="responseMessage" style="color: green; margin-top: 10px;"></p>
     </div>
-    <script type="text/javascript" src="script.js"></script>
+    <script>
+        async function confirmDetails() {
+            // Get form data
+            const plate_license = document.getElementById('plate_license').value;
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
+        
+            // Validate form data
+            if (!plate_license || !paymentMethod) {
+                alert("Please fill in all fields.");
+                return;
+            }
+            // Prepare the request payload
+            const payload = {
+                plate_license: plate_license,
+                payment_method: paymentMethod
+            };
+        
+            const messageElement = document.getElementById('responseMessage');
+            try {
+                // Display "Checking details..." message
+                messageElement.style.color = 'blue';
+                messageElement.textContent = 'Checking details...';
+        
+                // Send the data to the backend
+                const response = await fetch('/payment/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                // Handle the response
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.charged) {
+                        const paymentAmount = document.getElementById('paymentAmount');
+                        paymentAmount.textContent = result.amount;
+                        const plate_license_confirmed = document.getElementById('plate_license_confirmed');
+                        plate_license_confirmed.textContent = plate_license;
+                        document.getElementById('paymentForm').style.display = 'none';
+                        const paymentDetails = document.getElementById('paymentDetails');
+                        paymentDetails.style.display = 'block';
+                        messageElement.style.color = 'blue';
+                        messageElement.textContent = result.message
+                    } else {
+                        messageElement.style.color = 'red';
+                        messageElement.textContent = result.message;
+                    }
+                } else {
+                    const result = await response.json();
+                    console.error('Backend error:', result.message);
+                    messageElement.style.color = 'red';
+                    messageElement.textContent = result.message;
+                }
+                
+            } catch (error) {
+                console.error('Error processing payment:', error);
+                alert('An error occurred while processing the payment.');
+            }
+            // Hide the current form and show the new interface
+        
+        }
+        
+        function goBack() {
+            // Hide the paymentDetails and show the form again
+            document.getElementById('paymentDetails').style.display = 'none';
+            document.getElementById('paymentForm').style.display = 'block';
+        }        
+        
+        async function processPayment() {
+            const plate_license = document.getElementById('plate_license').value;
+            // Prepare the request payload
+            const payload = {
+                plate_license: plate_license
+            };
+        
+            const messageElement = document.getElementById('responseMessage');
+            try {
+                // Display "Processing Payment" message
+                messageElement.style.color = 'blue';
+                messageElement.textContent = 'Processing Payment...';
+        
+                // Send the data to the backend
+                const response = await fetch('/payment/process_payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+        
+                // Handle the response
+                const result = await response.json();
+                messageElement.style.color = 'green';
+                messageElement.textContent = result.message;
+
+                await new Promise(resolve => setTimeout(resolve, 3000))
+                document.getElementById('paymentForm').style.display = 'none';
+                document.getElementById('paymentDetails').style.display = 'none';
+                document.getElementById('newPay').style.display = 'flex';
+
+
+            } catch (error) {
+                console.error('Error processing payment:', error);
+                alert('An error occurred while processing the payment.');
+            }
+        }
+
+        async function reload() {
+            document.getElementById('paymentForm').style.display = 'block';
+            document.getElementById('paymentDetails').style.display = 'none';
+            document.getElementById('newPay').style.display = 'none';
+            document.getElementById('responseMessage').textContent = '';
+            document.getElementById('plate_license').value = '';
+            document.querySelectorAll('input[name="paymentMethod"]').forEach(input => input.checked = false);
+        }
+    </script>
 </body>
 </html>

@@ -38,14 +38,12 @@ class Gate():
                 self.status = Status.CLOSE
                 self.publish(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             elif payload == Status.CLOSE:
-                return
+                if topic.split('/')[-3] == 'exit':
+                    print(f"\nstayed too long after payment/entering, need to pay\n")
+                elif topic.split('/')[-3] == 'entrance':
+                    print("\nno more parking lots available\n")
             else :
                 Exception ("Unknown command received")
-      
-    def run(self):
-        def keep_alive():
-            while True:
-                time.sleep(1)
-        threading.Thread(target=keep_alive).start()          
+             
     
         

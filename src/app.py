@@ -18,6 +18,7 @@ parking.connect_device(deviceManager.entrance1)
 parking.connect_device(deviceManager.entrance2)
 parking.connect_device(deviceManager.exit1)
 parking.connect_device(deviceManager.exit2)
+parking.run()
     
     
 config = {

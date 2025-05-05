@@ -132,6 +132,10 @@ class Parking():
                     device.timestamp = entry_time              
                     break
     
+    def run(self):
+        while True: 
+            time.sleep(1)
+
     def GET(self):
         """
         Serve the payment_interface.html file.

@@ -7,6 +7,7 @@ import time
 import math
 from datetime import datetime
 import json
+import threading
 from utils import FileManager, CarStatus, ScannerStatus, GateStatus, PaymentStatus, PaymentMethod
 
 class Parking():
@@ -31,37 +32,37 @@ class Parking():
             print("no more parking lots available")
     
     def check_in(self, plate_license, device):
-        if plate_license in self.bookings.keys():
-            booking = self.bookings[plate_license]
-            if booking.is_expired():
-                print("Booking expired")
-                del self.bookings[plate_license]
-            else:
-                self.publich(device.command_topic_gate, GateStatus.OPEN)
-                while True:
-                    if device.timestamp:
-                        booking.enter(device.timestamp)
-                        print(f"Booking Car {plate_license} checked in")
-                        device.timestamp = None
-                        break
-                del self.bookings[plate_license]
-                self.parkings[plate_license] = booking
-                fileManager = FileManager()
-                fileManager.find_and_delete('../data/bookings.json', plate_license)
-                self.publich(device.command_topic_scanner, ScannerStatus.STANDBY)
+        def check_in_thread():
+            if plate_license in self.bookings.keys():
+                booking = self.bookings[plate_license]
+                if booking.is_expired():
+                    print("Booking expired")
+                    del self.bookings[plate_license]
+                else:
+                    self.publish(device.command_topic_gate, GateStatus.OPEN)
+                    while not device.timestamp:
+                        time.sleep(0.1)  # Ensure the loop doesn't block indefinitely
+                    booking.enter(device.timestamp)
+                    print(f"Booking Car {plate_license} checked in")
+                    device.timestamp = None
+                    del self.bookings[plate_license]
+                    self.parkings[plate_license] = booking
+                    fileManager = FileManager()
+                    fileManager.find_and_delete('../data/bookings.json', plate_license)
+                    self.publish(device.command_topic_scanner, ScannerStatus.STANDBY)
 
-        else:
-            if len(self.parkings) + len(self.bookings) < 100:
-                self.publich(device.command_topic_gate, GateStatus.OPEN)
-                while True:
-                    if device.timestamp:
-                        car = Car(plate_license, device.timestamp)
-                        print(f"New Car {plate_license} checked in")
-                        break
-                self.parkings[plate_license] = car
-                self.publich(device.command_topic_scanner, ScannerStatus.STANDBY)
             else:
-                print("no more parking lots available")
+                if len(self.parkings) + len(self.bookings) < self.num_lots:
+                    self.publish(device.command_topic_gate, GateStatus.OPEN)
+                    while not device.timestamp:
+                        time.sleep(0.1)  # Ensure the loop doesn't block indefinitely
+                    car = Car(plate_license, device.timestamp)
+                    print(f"New Car {plate_license} checked in")
+                    self.parkings[plate_license] = car
+                    self.publish(device.command_topic_scanner, ScannerStatus.STANDBY)
+                else:
+                    print("no more parking lots available")
+        threading.Thread(target=check_in_thread).start()
     
     def check(self, plate_license, method):
         car = self.parkings[plate_license]
@@ -111,30 +112,30 @@ class Parking():
     
     def connect_device(self, device):
         self.devices[device.id] = device
+        self.client.subscribe(device.info_topic_scanner)
+        self.client.subscribe(device.info_topic_gate)
     
     def publish(self, topic, message):
         self.client.publish(topic, message)
-        print(f"Published message: {message} to topic: {self.topic}") 
+        print(f"Published message: {message} to topic: {topic}") 
         
     def notify(self, topic, payload):
         payload = json.loads(payload)
         if topic.split('/')[-2].startswith('scanner') and topic.split('/')[-3] == 'entrance':
             plate_license = payload
-            for device in self.devices.values:
+            print(f"Scanner {topic.split('/')[-2]} detected plate: {payload}")
+            for device in self.devices.values():
                 if device.info_topic_scanner == topic:     
                     self.check_in(plate_license, device) 
                     break              
                     
         elif topic.split('/')[-2].startswith('gate'):
             entry_time = datetime.strptime(payload, "%Y-%m-%d %H:%M:%S")
-            for device in self.devices.values:
+            print(f"Gate {topic.split('/')[-2]} opened at: {payload}")
+            for device in self.devices.values():
                 if device.info_topic_gate == topic:     
                     device.timestamp = entry_time              
                     break
-    
-    def run(self):
-        while True: 
-            time.sleep(1)
 
     def GET(self):
         """

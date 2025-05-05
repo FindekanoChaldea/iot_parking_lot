@@ -39,8 +39,5 @@ class Gate():
             else :
                 Exception ("Unknown command received")
                 
-    def run(self):
-        while True:
-            time.sleep(1)
     
         

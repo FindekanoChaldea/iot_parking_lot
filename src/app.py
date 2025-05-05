@@ -3,6 +3,7 @@
 # Your code here.
 import cherrypy
 import os
+import time
 from Parking import Parking
 from config_loader import ConfigLoader
 from Device import DeviceManager
@@ -43,4 +44,5 @@ cherrypy.tree.mount(parking, config_loader.payment_api.uri, config)
 cherrypy.engine.start()
 cherrypy.engine.block()
 
-parking.run()
+while True:
+    time.sleep(1)

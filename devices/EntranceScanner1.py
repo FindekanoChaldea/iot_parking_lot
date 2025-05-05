@@ -17,6 +17,6 @@ cars = []
 with open(path, 'r') as file:
     cars = json.load(file)
 for car in cars:
-    entranceScanner1.scan_plate(car)
     time.sleep(random.randint(5, 10))  # Simulate random time intervals
+    entranceScanner1.scan_plate(car)
         

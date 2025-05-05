@@ -17,9 +17,7 @@ parking = Parking(client_id, broker, port)
 parking.connect_device(deviceManager.entrance1)
 parking.connect_device(deviceManager.entrance2)
 parking.connect_device(deviceManager.exit1)
-parking.connect_device(deviceManager.exit2)
-parking.run()
-    
+parking.connect_device(deviceManager.exit2)   
     
 config = {
         '/': {
@@ -44,3 +42,5 @@ cherrypy.server.socket_port = config_loader.payment_api.port
 cherrypy.tree.mount(parking, config_loader.payment_api.uri, config)
 cherrypy.engine.start()
 cherrypy.engine.block()
+
+parking.run()

@@ -8,6 +8,7 @@ from datetime import datetime
 import json
 from threading import Lock
 from src.utils import GateStatus as Status
+import threading
 
 class Gate():
         
@@ -24,7 +25,9 @@ class Gate():
         print(f"Published message: {message} to topic: {self.topic}")
     
     def open_close(self):
+        print("Gate is opening...")
         time.sleep(0.5)  # Simulate gate opening time
+        print("Gate is closing...")
     
     def notify(self, topic, payload): 
         with self.lock:
@@ -38,6 +41,11 @@ class Gate():
                 return
             else :
                 Exception ("Unknown command received")
-                
+      
+    def run(self):
+        def keep_alive():
+            while True:
+                time.sleep(1)
+        threading.Thread(target=keep_alive).start()          
     
         

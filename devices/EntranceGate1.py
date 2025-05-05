@@ -7,5 +7,4 @@ port = 1883
 pub_topic = 'polito_parking/entrance/gate1/info'
 sub_topic = 'polito_parking/entrance/gate1/command'
 entranceGate1 = Gate(client_id, broker, port, pub_topic, sub_topic)
-while True:
-    time.sleep(1)  # Keep the script running to listen for messages
+entranceGate1.run()

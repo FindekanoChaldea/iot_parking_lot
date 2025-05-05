@@ -138,7 +138,12 @@ class Parking():
                 if device.info_topic_gate == topic:     
                     device.timestamp = entry_time              
                     break
-
+    def run(self):
+        def keep_alive():
+            while True:
+                time.sleep(1)
+        threading.Thread(target=keep_alive).start()  
+        
     def GET(self):
         """
         Serve the payment_interface.html file.

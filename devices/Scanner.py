@@ -6,6 +6,7 @@ from src.ParkingMQTT import ParkingMQTT as client
 import time
 import json
 from src.utils import ScannerStatus as Status
+import threading
 
 class Scanner():
         
@@ -31,8 +32,10 @@ class Scanner():
         payload = json.loads(payload)
         if payload == Status.STANDBY:
             self.status = Status.STANDBY
-
+    
     def run(self):
-        while True:
-            time.sleep(1)
+        def keep_alive():
+            while True:
+                time.sleep(1)
+        threading.Thread(target=keep_alive).start()
         

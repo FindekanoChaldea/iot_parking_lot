@@ -1,4 +1,5 @@
 from Gate import Gate
+import time
        
 client_id = 'EntranceGate2'
 broker = "mqtt.eclipseprojects.io"

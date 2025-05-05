@@ -1,4 +1,5 @@
 from Scanner import Scanner
+import time
 
 client_id = 'EntranceScanner2'
 broker = "mqtt.eclipseprojects.io"

@@ -19,7 +19,8 @@ parking.connect_device(deviceManager.entrance1)
 parking.connect_device(deviceManager.entrance2)
 parking.connect_device(deviceManager.exit1)
 parking.connect_device(deviceManager.exit2)   
-    
+parking.run()   
+
 config = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
@@ -43,6 +44,3 @@ cherrypy.server.socket_port = config_loader.payment_api.port
 cherrypy.tree.mount(parking, config_loader.payment_api.uri, config)
 cherrypy.engine.start()
 cherrypy.engine.block()
-
-while True:
-    time.sleep(1)

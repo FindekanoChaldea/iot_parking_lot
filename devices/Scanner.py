@@ -1,7 +1,9 @@
-from src import ParkingMQTT as client
-import time
-import random
+import sys
 import os
+# Add the parent directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.ParkingMQTT import ParkingMQTT as client
+import time
 import json
 from src.utils import ScannerStatus as Status
 
@@ -29,4 +31,8 @@ class Scanner():
         payload = json.loads(payload)
         if payload == Status.STANDBY:
             self.status = Status.STANDBY
+
+    def run(self):
+        while True:
+            time.sleep(1)
         

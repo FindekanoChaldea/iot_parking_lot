@@ -1,4 +1,8 @@
-from src import ParkingMQTT as client
+import sys
+import os
+# Add the parent directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.ParkingMQTT import ParkingMQTT as client
 import time
 from datetime import datetime
 import json
@@ -34,5 +38,9 @@ class Gate():
                 return
             else :
                 Exception ("Unknown command received")
+                
+    def run(self):
+        while True:
+            time.sleep(1)
     
         

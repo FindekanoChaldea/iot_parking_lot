@@ -13,5 +13,5 @@ class ParkingBot():
 							  'callback_query': self.queries}
 		self.client_mqtt = ParkingMQTT(client_id,broker,port)
 		self.base_topic = base_topic
-		self.generic_keyboard = InlineKeyboardMarkup(inline_keyboard =[[InlineKeyboardButton(text='SwitchON', callback_data='ON_light1')],[InlineKeyboardButton(text='SwitchOFF', callback_data='OFF_light1')]])
+		self.generic_keyboard = InlineKeyboardMarkup(inline_keyboard =[[InlineKeyboardButton(text='Check empty slot', callback_data='CHECK_SLOT'))],[InlineKeyboardButton(text='Book a slot', callback_data='BOOK_SLOT')]])
 

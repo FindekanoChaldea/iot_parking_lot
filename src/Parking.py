@@ -22,14 +22,20 @@ class Parking():
         self.client.start()
         self.free_stop = 30 ##seconds
         self.checking_time = 60 ##seconds
+        self.hourly_rate = 1.50 # euros
+        self.booking_advance = 2 # hours
             
     def book(self, plate_license, expecting_time):
-        if len(self.parkings) + len(self.bookings) < 100:
-            booking = Car(plate_license, expecting_time = expecting_time)
-            booking.book()
-            self.bookings[plate_license] = booking
+        if len(self.parkings) + len(self.bookings) < self.num_lots:
+            if expecting_time - datetime.now()  < 3600*2:
+                return [False, "Booking time should be at most 2 hours in advance"]
+            else:
+                booking = Car(plate_license, expecting_time = expecting_time)
+                booking.book()
+                self.bookings[plate_license] = booking
+                return [True, f"Car {plate_license} at {datetime.strftime(expecting_time)}Booking successful"]
         else:
-            print("no more parking lots available")
+            return [False, "No more parking lots available"]
     
     def check_in(self, plate_license, device):
         def check_in_thread():
@@ -68,7 +74,7 @@ class Parking():
     def check(self, plate_license, method):
         car = self.parkings[plate_license]
         if car.status == CarStatus.CHARGED:
-            fee = 1.50 * math.ceil((datetime.now() - car.start_time).seconds/3600)
+            fee = self.hourly_rate * math.ceil((datetime.now() - car.start_time).seconds/3600)
             car.check(fee, method, datetime.now())
             return True   
         elif (datetime.now() - car.start_time).seconds > self.free_stop:
@@ -160,6 +166,8 @@ class Parking():
                 if device.info_topic_gate == topic:     
                     device.timestamp = exit_time              
                     break       
+        elif True:
+            pass
                 
             
     def run(self):

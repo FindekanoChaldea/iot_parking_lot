@@ -13,7 +13,6 @@ class ParkingBot:
             'chat': self.on_chat_message,
             'callback_query': self.on_callback_query
         }
-        self.chat_ids = []
         self.base_topic = base_topic
         self.chat_ids = []
         self.client_mqtt.start()

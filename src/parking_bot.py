@@ -15,6 +15,8 @@ class ParkingBot:
         }
         self.chat_ids = []
         self.base_topic = base_topic
+        self.chat_ids = []
+        self.client_mqtt.start()
         self.client = ParkingMQTT(client_id, broker, port, notifier=self)
 
         self.generic_keyboard = InlineKeyboardMarkup(inline_keyboard=[

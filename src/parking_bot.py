@@ -70,3 +70,15 @@ class ParkingBot:
 
         for chat_id in self.chat_ids:
             self.bot.sendMessage(chat_id, f"Topic: {topic}\nData: {data}")
+
+if __name__ == '__main__':
+    token = '7675586421:AAG9Y-tXI68yP-8NIUbQDpel0xyt5Ad9c8s'
+    broker = 'mqtt.eclipseprojects.io'
+    port = 1883
+    client_id = 'parking_bot'
+
+    bot = ParkingBot(token, client_id, broker, port)
+    bot.start()
+
+    while True:
+        time.sleep(5)

@@ -8,6 +8,7 @@ import json
 from Parking import Parking
 from config_loader import ConfigLoader
 from Device import DeviceManager
+from parking_bot import ParkingBot
 
 config_loader = ConfigLoader()
 deviceManager = DeviceManager()
@@ -53,3 +54,9 @@ cherrypy.server.socket_port = config_loader.payment_api.port
 cherrypy.tree.mount(parking, config_loader.payment_api.uri, config)
 cherrypy.engine.start()
 cherrypy.engine.block()
+
+# Integrate Telegram Bot with the parking system
+bot_token = "7675586421:AAG9Y-tXI68yP-8NIUbQDpel0xyt5Ad9c8s"
+bot_client_id = "parking_bot"
+bot = ParkingBot(bot_token, bot_client_id, broker, port, parking)
+bot.start()

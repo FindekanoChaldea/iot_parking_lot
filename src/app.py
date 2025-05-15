@@ -56,7 +56,11 @@ cherrypy.engine.start()
 cherrypy.engine.block()
 
 # Integrate Telegram Bot with the parking system
+client_id = "parking_system"
+broker = "mqtt.eclipseprojects.io"
+port = 1883
 bot_token = "7675586421:AAHgUOVDNULEl2r6U9u2I8IsZzerUQKFROg"
-bot_client_id = "parking_bot"
-bot = ParkingBot(bot_token, bot_client_id, broker, port, parking)
+
+parking = Parking(client_id, broker, port)
+bot = ParkingBot(bot_token, parking)
 bot.start()

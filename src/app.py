@@ -56,7 +56,7 @@ cherrypy.engine.start()
 cherrypy.engine.block()
 
 # Integrate Telegram Bot with the parking system
-bot_token = "7675586421:AAG9Y-tXI68yP-8NIUbQDpel0xyt5Ad9c8s"
+bot_token = "7675586421:AAHgUOVDNULEl2r6U9u2I8IsZzerUQKFROg"
 bot_client_id = "parking_bot"
 bot = ParkingBot(bot_token, bot_client_id, broker, port, parking)
 bot.start()

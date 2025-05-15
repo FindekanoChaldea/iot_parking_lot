@@ -1,77 +1,122 @@
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
-import time
+from datetime import datetime
 import json
-from ParkingMQTT import ParkingMQTT
+import os
 
 class ParkingBot:
-    def __init__(self, token, client_id, broker, port, base_topic="/parking"):
+    def __init__(self, token, parking, booking_file="BOOKING.json"):
         self.token = token
         self.bot = telepot.Bot(token)
+        self.parking = parking
+        self.booking_file = booking_file
+        self.user_states = {}  # 保存用户输入状态
+
         self.callback_dict = {
             'chat': self.on_chat_message,
             'callback_query': self.on_callback_query
         }
-        self.base_topic = base_topic
-        self.chat_ids = []
-        self.client_mqtt.start()
-        self.client = ParkingMQTT(client_id, broker, port, notifier=self)
-
-        self.generic_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text='Check empty slot', callback_data='CHECK_SLOT')],
-            [InlineKeyboardButton(text='Book a slot', callback_data='BOOK_SLOT')]
-        ])
 
     def start(self):
         MessageLoop(self.bot, self.callback_dict).run_as_thread()
-        print("Telegram bot is running...")
-        self.client.start()
+        print("ParkingBot is running...")
 
     def on_chat_message(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
-        if chat_id not in self.chat_ids:
-            self.chat_ids.append(chat_id)
 
-        if content_type == 'text':
-            text = msg['text']
-            if text == '/start':
-                self.bot.sendMessage(chat_id, "Welcome to Smart Parking Bot.\nUse /options to view available actions.")
-            elif text == '/options':
-                self.bot.sendMessage(chat_id, "Choose an option:", reply_markup=self.generic_keyboard)
+        if content_type != 'text':
+            self.bot.sendMessage(chat_id, "Please send text only.")
+            return
+
+        text = msg['text'].strip()
+
+        # Command Handling
+        if text.lower() == '/start':
+            self.bot.sendMessage(chat_id, "Welcome to ParkingBot! Use /book to reserve a spot, /cancel <plate> to cancel.")
+        elif text.lower() == '/book':
+            self.user_states[chat_id] = {'step': 'plate'}
+            self.bot.sendMessage(chat_id, "Please enter your plate number:")
+        elif text.lower().startswith('/cancel'):
+            self.handle_cancel(chat_id, text)
+        elif chat_id in self.user_states:
+            self.handle_booking_step(chat_id, text)
+        else:
+            self.bot.sendMessage(chat_id, "Unknown command. Use /book or /cancel <plate>.")
+
+    def handle_booking_step(self, chat_id, text):
+        state = self.user_states[chat_id]
+        if state['step'] == 'plate':
+            state['plate'] = text.upper()
+            state['step'] = 'time'
+            self.bot.sendMessage(chat_id, "Enter expected arrival time (format: YYYY-MM-DD HH:MM:SS):")
+        elif state['step'] == 'time':
+            try:
+                expecting_time = datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+                result, message = self.parking.book(state['plate'], expecting_time)
+                if result:
+                    self.save_booking_to_json(state['plate'], expecting_time)
+                self.bot.sendMessage(chat_id, message)
+            except ValueError:
+                self.bot.sendMessage(chat_id, "Invalid format. Please use YYYY-MM-DD HH:MM:SS")
+            finally:
+                del self.user_states[chat_id]
+
+    def handle_cancel(self, chat_id, text):
+        try:
+            plate = text.split(' ')[1].upper()
+        except IndexError:
+            self.bot.sendMessage(chat_id, "Please provide the plate number. Usage: /cancel ABC123")
+            return
+
+        if plate in self.parking.bookings:
+            del self.parking.bookings[plate]
+            self.remove_booking_from_json(plate)
+            self.bot.sendMessage(chat_id, f"Booking for {plate} has been cancelled.")
+        else:
+            self.bot.sendMessage(chat_id, f"No active booking found for plate: {plate}")
 
     def on_callback_query(self, msg):
-        query_id, chat_id, query_data = telepot.glance(msg, flavor='callback_query')
+        query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
+        self.bot.answerCallbackQuery(query_id, text="Not implemented")
 
-        if query_data == 'CHECK_SLOT':
-            topic = self.base_topic + "/status"
-            self.client.subscribe(topic)
-            self.bot.sendMessage(chat_id, "Subscribed to parking status updates.")
-        elif query_data == 'BOOK_SLOT':
-            self.publish_booking(chat_id)
-            self.bot.sendMessage(chat_id, "Booking request sent.")
+    def save_booking_to_json(self, plate, time_obj):
+        booking_data = {}
+        if os.path.exists(self.booking_file):
+            with open(self.booking_file, 'r') as f:
+                try:
+                    booking_data = json.load(f)
+                except json.JSONDecodeError:
+                    booking_data = {}
 
-    def publish_booking(self, chat_id):
-        topic = self.base_topic + "/booking/request"
-        msg = {
-            "chat_id": chat_id,
-            "timestamp": time.time(),
-            "action": "book"
+        booking_data[plate] = {
+            "plate": plate,
+            "expecting_time": time_obj.strftime("%Y-%m-%d %H:%M:%S")
         }
-        self.client.publish(topic, msg)
 
-    def notify(self, topic, payload):
-        try:
-            decoded = payload.decode('utf-8')
-            data = json.loads(decoded)
-        except Exception:
-            data = str(payload)
+        with open(self.booking_file, 'w') as f:
+            json.dump(booking_data, f, indent=4)
 
-        for chat_id in self.chat_ids:
-            self.bot.sendMessage(chat_id, f"Topic: {topic}\nData: {data}")
+        print(f"Saved booking for {plate} to {self.booking_file}")
+
+    def remove_booking_from_json(self, plate):
+        if os.path.exists(self.booking_file):
+            with open(self.booking_file, 'r') as f:
+                try:
+                    booking_data = json.load(f)
+                except json.JSONDecodeError:
+                    booking_data = {}
+
+            if plate in booking_data:
+                del booking_data[plate]
+
+                with open(self.booking_file, 'w') as f:
+                    json.dump(booking_data, f, indent=4)
+
+                print(f"Removed booking for {plate} from {self.booking_file}")
 
 if __name__ == '__main__':
-    token = '7675586421:AAG9Y-tXI68yP-8NIUbQDpel0xyt5Ad9c8s'
+    token = '7675586421:AAHgUOVDNULEl2r6U9u2I8IsZzerUQKFROg'
     broker = 'mqtt.eclipseprojects.io'
     port = 1883
     client_id = 'parking_bot'

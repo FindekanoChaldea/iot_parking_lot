@@ -27,6 +27,10 @@ class Parking():
         self.checking_time = 60 ##seconds
         self.hourly_rate = 1.50 # euros
         self.booking_advance = 2 # hours
+    
+    def connect_bot(self, info_topic, command_topic):
+        self.client.subscribe(info_topic)
+        self.bot_command_topic = command_topic
             
     def book(self, plate_license, expecting_time):
         if len(self.parkings) + len(self.bookings) < self.num_lots:
@@ -169,8 +173,16 @@ class Parking():
                 if device.info_topic_gate == topic:     
                     device.timestamp = exit_time              
                     break       
-        elif True:
-            pass
+        elif topic.split('/')[-1] == 'bot':
+            data = json.loads(payload)
+            if data['action'] == 'book':
+                plate_license = data['plate_license']
+                expecting_time = datetime.strptime(data['expecting_time'], "%Y-%m-%d %H:%M:%S").replace(tzinfo=italy_tz)
+                result = self.book(plate_license, expecting_time)
+                self.publish(result[1])
+            elif data['action'] == 'cancel':
+                plate_license = data['plate_license']
+                pass
                 
             
     def run(self):

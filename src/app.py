@@ -21,6 +21,7 @@ parking.connect_device(deviceManager.entrance1)
 parking.connect_device(deviceManager.entrance2)
 parking.connect_device(deviceManager.exit1)
 parking.connect_device(deviceManager.exit2)   
+parking.connect_bot(info_topic = "polito_parking/bot/info", command_topic = "polito_parking/bot/command")
 parking.run()   
 
 def handle_error(status, message, traceback, version):
@@ -55,12 +56,3 @@ cherrypy.tree.mount(parking, config_loader.payment_api.uri, config)
 cherrypy.engine.start()
 cherrypy.engine.block()
 
-# Integrate Telegram Bot with the parking system
-client_id = "parking_system"
-broker = "mqtt.eclipseprojects.io"
-port = 1883
-bot_token = "7675586421:AAHgUOVDNULEl2r6U9u2I8IsZzerUQKFROg"
-
-parking = Parking(client_id, broker, port)
-bot = ParkingBot(bot_token, parking)
-bot.start()

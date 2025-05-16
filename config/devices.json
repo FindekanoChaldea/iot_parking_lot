@@ -35,6 +35,11 @@
         "scanner_id": "ExitScanner2",
         "info_topic_scanner": "polito_parking/exit/scanner2/info",
         "command_topic_scanner": "polito_parking/exit/scanner2/command"
+      },
+      "bot": {
+        "id" : "TelegramBot",
+        "info_topic": "polito_parking/bot/info",
+        "command_topic": "polito_parking/bot/command"
       }
     }
 }

@@ -1,7 +1,7 @@
 {
     "_comment": "This is a sample json file for the settings.",
 
-    "telegram_bot_token": "YOUR_BOT_TOKEN_HERE",
+    "telegram_bot_token": "7675586421:AAHgUOVDNULEl2r6U9u2I8IsZzerUQKFROg",
     "thingspeak": {
       "channel_id": "2952378",
       "api_key": "G0BK8P0ST9KHYR7H"

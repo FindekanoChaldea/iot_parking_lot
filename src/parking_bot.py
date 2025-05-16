@@ -2,11 +2,16 @@ import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import datetime
+import time
 import json
 import os
+from Parking import Parking
+from zoneinfo import ZoneInfo  
+
+italy_tz = ZoneInfo("Europe/Rome")  # Define the Italy timezone
 
 class ParkingBot:
-    def __init__(self, token, parking, booking_file="BOOKING.json"):
+    def __init__(self, token, parking, booking_file="bookings.json"):
         self.token = token
         self.bot = telepot.Bot(token)
         self.parking = parking
@@ -52,10 +57,11 @@ class ParkingBot:
             self.bot.sendMessage(chat_id, "Enter expected arrival time (format: YYYY-MM-DD HH:MM:SS):")
         elif state['step'] == 'time':
             try:
-                expecting_time = datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+                expecting_time = datetime.strptime(text, "%Y-%m-%d %H:%M:%S").replace(tzinfo=italy_tz)
                 result, message = self.parking.book(state['plate'], expecting_time)
                 if result:
                     self.save_booking_to_json(state['plate'], expecting_time)
+                print(f"Bot sendMessage to {chat_id}: {message}")
                 self.bot.sendMessage(chat_id, message)
             except ValueError:
                 self.bot.sendMessage(chat_id, "Invalid format. Please use YYYY-MM-DD HH:MM:SS")
@@ -121,8 +127,10 @@ if __name__ == '__main__':
     port = 1883
     client_id = 'parking_bot'
 
-    bot = ParkingBot(token, client_id, broker, port)
+    parking = Parking(client_id, broker, port)
+    bot = ParkingBot(token, parking)
     bot.start()
 
     while True:
         time.sleep(5)
+

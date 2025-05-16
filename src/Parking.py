@@ -43,6 +43,24 @@ class Parking():
                 return [True, f"Car {plate_license} at {expecting_time} Booking successful"]
         else:
             return [False, "No more parking lots available"]
+        
+    def cancel_booking(self, plate_license):
+        if plate_license in self.bookings.keys():
+            del self.bookings[plate_license]
+            # Remove the booking from the JSON file
+            booking_file = "bookings.json"
+            if os.path.exists(booking_file):
+                with open(booking_file, 'r') as f:
+                    try:
+                        booking_data = json.load(f)
+                    except json.JSONDecodeError:
+                        booking_data = {}
+                if plate_license in booking_data:
+                    del booking_data[plate_license]
+                    with open(booking_file, 'w') as f:
+                        json.dump(booking_data, f, indent=4)
+            return [True, f"Car {plate_license} Booking scancelled"]
+        return False
     
     def check_in(self, plate_license, device):
         def check_in_thread():
@@ -180,11 +198,19 @@ class Parking():
                 expecting_time = datetime.strptime(data['expecting_time'], "%Y-%m-%d %H:%M:%S").replace(tzinfo=italy_tz)
                 result = self.book(plate_license, expecting_time)
                 self.publish(result[1])
+
             elif data['action'] == 'cancel':
                 plate_license = data['plate_license']
-                pass
-                
-            
+                plate_license = data.get('plate')
+                chat_id = data.get('chat_id')
+                success = self.cancel_booking(plate_license)
+                # 通过MQTT回复结果
+                msg = (f"Booking for {plate_license} has been cancelled."
+                            if success else f"No active booking found for plate: {plate_license}")
+                response = {'chat_id': chat_id, 'msg': msg}
+                self.client.publish('polito_parking/bot/info', json.dumps([chat_id, msg]))
+                print(f"Booking for {plate_license} has been cancelled.")
+                print(f"Published message: {msg} to topic: polito_parking/bot/info")    
     def run(self):
         def keep_alive():
             while True:

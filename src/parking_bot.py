@@ -19,6 +19,7 @@ class ParkingBot:
         self.client = client(client_id, broker, port, self)
         self.topic = info_topic
         self.client.subscribe(command_topic)
+        self.client.subscribe(info_topic)
         self.token = token
         self.bot = telepot.Bot(token)
         self.user_states = {}
@@ -43,6 +44,7 @@ class ParkingBot:
 
     def on_chat_message(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
+        print(f"Received message: {msg} from chat_id: {chat_id}")
 
         if content_type != 'text':
             self.bot.sendMessage(chat_id, "Please send text only.")
@@ -89,17 +91,15 @@ class ParkingBot:
     
     def handle_cancel(self, chat_id, text):
         try:
-            plate = text.split(' ')[1].upper()
+            plate_license = text.split(' ')[1].upper()
         except IndexError:
             self.bot.sendMessage(chat_id, "Please provide the plate number. Usage: /cancel ABC123")
             return
-
-        if plate in self.parking.bookings:
-            del self.parking.bookings[plate]
-            self.remove_booking_from_json(plate)
-            self.bot.sendMessage(chat_id, f"Booking for {plate} has been cancelled.")
-        else:
-            self.bot.sendMessage(chat_id, f"No active booking found for plate: {plate}")
+        data = {'chat_id': chat_id,
+                'action': 'cancel',
+                'plate': plate_license}
+        self.publish(json.dumps(data))
+        self.bot.sendMessage(chat_id, f"Cancellation request for {plate_license} sent.")    
 
     def on_callback_query(self, msg):
         query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')

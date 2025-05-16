@@ -86,15 +86,16 @@ class Car:
         }
         self.fileManager.add_fields(file_path, field)
         
-        client = ThingSpeakClient(api_key='G0BK8P0ST9KHYR7H')
-        client.upload_record(
-            plate_license=self.plate_license,
-            entry_time=field[self.plate_license]['entry_time'],
-            payment_time=field[self.plate_license]['payment_time'],
-            exit_time=field[self.plate_license]['exit_time'],
-            total_payment=field[self.plate_license]['total_payment']
-        )
-        print(f"Saved {self.plate_license} to {file_path}")
-        print(f"Uploaded {self.plate_license} to ThingSpeak")
-    
+        if self.status == Status.PAID:
+            client = ThingSpeakClient(api_key='G0BK8P0ST9KHYR7H')
+            client.upload_record(
+                plate_license=self.plate_license,
+                entry_time=field[self.plate_license]['entry_time'],
+                payment_time=field[self.plate_license]['payment_time'],
+                exit_time=field[self.plate_license]['exit_time'],
+                total_payment=field[self.plate_license]['total_payment']
+            )
+            print(f"Saved {self.plate_license} to {file_path}")
+            print(f"Uploaded {self.plate_license} to ThingSpeak")
+        
 

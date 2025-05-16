@@ -21,6 +21,7 @@ class ParkingMQTT:
 
     def OnMessageReceived (self, paho_mqtt , userdata, msg):
         # A new message is received
+        payload = msg.payload.decode('utf-8')
         self.notifier.notify(msg.topic, msg.payload)
  
     def publish (self, topic, msg):

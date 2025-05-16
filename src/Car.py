@@ -11,11 +11,12 @@ class Car:
     def __init__(self, plate_license, entry_time = None, expecting_time = None):
         self.plate_license = plate_license
         self.entry_time = entry_time
+        self.expecting_time = expecting_time
         if entry_time:
             self.status = Status.ENTERED
         else:
             self.status = Status.BOOKED
-            self.expecting_time = expecting_time
+
         self.start_time = entry_time
         self.total_payment = 0.0
         self.exit_time = None
@@ -76,6 +77,7 @@ class Car:
             f'{self.plate_license}': 
                 {
                 'plate_license': f'{self.plate_license}',
+                'expecting_time': datetime.strftime(self.expecting_time, "%Y-%m-%d %H:%M:%S") if self.expecting_time else None,
                 'entry_time': datetime.strftime(self.entry_time, "%Y-%m-%d %H:%M:%S") if self.entry_time else None,
                 'payment_time': datetime.strftime(self.payment_time, "%Y-%m-%d %H:%M:%S") if self.payment_time else None,
                 'exit_time': datetime.strftime(self.exit_time, "%Y-%m-%d %H:%M:%S") if self.exit_time else None,
@@ -84,13 +86,15 @@ class Car:
         }
         self.fileManager.add_fields(file_path, field)
         
-        ThingSpeakClient.upload_record(
-            api_key='G0BK8P0ST9KHYR7H',
+        client = ThingSpeakClient(api_key='G0BK8P0ST9KHYR7H')
+        client.upload_record(
             plate_license=self.plate_license,
             entry_time=field[self.plate_license]['entry_time'],
             payment_time=field[self.plate_license]['payment_time'],
             exit_time=field[self.plate_license]['exit_time'],
             total_payment=field[self.plate_license]['total_payment']
         )
-
+        print(f"Saved {self.plate_license} to {file_path}")
+        print(f"Uploaded {self.plate_license} to ThingSpeak")
     
+

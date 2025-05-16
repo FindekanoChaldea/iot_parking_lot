@@ -40,11 +40,11 @@ config = {
         },
         '/css': {
             'tools.staticdir.on': True,
-            'tools.staticdir.dir': 'frontend/css'
+            'tools.staticdir.dir': 'frontend/styles.css'
         },
         '/js': {
             'tools.staticdir.on': True,
-            'tools.staticdir.dir': 'frontend/js'
+            'tools.staticdir.dir': 'frontend/script.js'
         },
     }
 

@@ -5,10 +5,13 @@ import cherrypy
 import os
 import time
 import math
-from datetime import datetime
+from datetime import datetime,timedelta
 import json
 import threading
 from utils import FileManager, CarStatus, ScannerStatus, GateStatus, PaymentStatus, PaymentMethod
+from zoneinfo import ZoneInfo
+
+italy_tz = ZoneInfo("Europe/Rome")
 
 class Parking():
     exposed = True
@@ -27,13 +30,13 @@ class Parking():
             
     def book(self, plate_license, expecting_time):
         if len(self.parkings) + len(self.bookings) < self.num_lots:
-            if expecting_time - datetime.now()  < 3600*2:
-                return [False, "Booking time should be at most 2 hours in advance"]
+            if (expecting_time - datetime.now(italy_tz)).total_seconds() > 3600*2:
+                return [False, f"Booking time should be no more than 2 hours in advance,the time now is {datetime.now(italy_tz)}"]
             else:
                 booking = Car(plate_license, expecting_time = expecting_time)
                 booking.book()
                 self.bookings[plate_license] = booking
-                return [True, f"Car {plate_license} at {datetime.strftime(expecting_time)}Booking successful"]
+                return [True, f"Car {plate_license} at {expecting_time} Booking successful"]
         else:
             return [False, "No more parking lots available"]
     

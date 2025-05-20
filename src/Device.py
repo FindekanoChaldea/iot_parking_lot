@@ -16,6 +16,12 @@ class Device:
         self.command_topic_scanner = command_topic_scanner
         self.timestamp = timestamp
 
+class Bot:
+    def __init__(self, id, info_topic, command_topic):
+        self.id = id
+        self.info_topic = info_topic
+        self.command_topic = command_topic
+
 class DeviceManager:
     def __init__(self):
         self.config = {}
@@ -53,3 +59,6 @@ class DeviceManager:
                                     self.config['devices']['exit2']['scanner_id'],
                                     self.config['devices']['exit2']['info_topic_scanner'],
                                     self.config['devices']['exit2']['command_topic_scanner'])
+        self.bot = Bot(self.config['devices']['bot']['id'],
+                        self.config['devices']['bot']['info_topic'],
+                        self.config['devices']['bot']['command_topic'])

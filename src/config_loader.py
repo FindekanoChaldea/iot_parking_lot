@@ -15,6 +15,7 @@ class ConfigLoader:
                 pass
         self.mqtt = self.MQTT(self)
         self.payment_api = self.Payment_api(self)
+        self.telegram_bot_token = self.config['telegram_bot_token']
         
     class MQTT:
         def __init__(self, config_loader):

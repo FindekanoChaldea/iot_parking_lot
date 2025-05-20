@@ -3,12 +3,10 @@
 # Your code here.
 import cherrypy
 import os
-import time
 import json
 from Parking import Parking
 from config_loader import ConfigLoader
 from Device import DeviceManager
-from parking_bot import ParkingBot
 
 config_loader = ConfigLoader()
 deviceManager = DeviceManager()
@@ -21,17 +19,17 @@ parking.connect_device(deviceManager.entrance1)
 parking.connect_device(deviceManager.entrance2)
 parking.connect_device(deviceManager.exit1)
 parking.connect_device(deviceManager.exit2)   
-parking.connect_bot(info_topic = "polito_parking/bot/info", command_topic = "polito_parking/bot/command")
+parking.connect_bot(deviceManager.bot)
 parking.run()   
+
+
 
 def handle_error(status, message, traceback, version):
     cherrypy.response.headers['Content-Type'] = 'application/json'
     return json.dumps({'message':message})
-
 cherrypy.config.update({
     'error_page.default': handle_error
 })
-
 config = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
@@ -55,4 +53,3 @@ cherrypy.server.socket_port = config_loader.payment_api.port
 cherrypy.tree.mount(parking, config_loader.payment_api.uri, config)
 cherrypy.engine.start()
 cherrypy.engine.block()
-

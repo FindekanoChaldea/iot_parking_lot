@@ -1,0 +1,18 @@
+{
+    "BKSNBF": {
+        "plate_license": "BKSNBF",
+        "expecting_time": "2025-05-21 02:30:00",
+        "entry_time": null,
+        "payment_time": null,
+        "exit_time": null,
+        "total_payment": "0.0"
+    },
+    "JAKBJCME": {
+        "plate_license": "JAKBJCME",
+        "expecting_time": "2025-05-21 02:30:00",
+        "entry_time": null,
+        "payment_time": null,
+        "exit_time": null,
+        "total_payment": "0.0"
+    }
+}

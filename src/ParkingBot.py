@@ -13,6 +13,7 @@ italy_tz = ZoneInfo("Europe/Rome")  # Define the Italy timezone
 class Status:
         Input_plate = 'plate'
         Input_time = 'time'
+        check = 'check'
         Cancel = 'cancel'
 
 class Chat: 
@@ -84,9 +85,14 @@ class ParkingBot:
         text = msg['text'].strip()
         print(f'Received message: "{text}" from chat_id: "{chat_id}"')
         # Command Handling
-        if text.lower() == '/start':
+        if chat_id not in self.chats.keys() and text.lower() != '/start':
+            self.bot.sendMessage(chat_id, "Welcome to Polito Parking Lot! Send /start to start.")
+        elif text.lower() == '/start':
             self.chats[chat_id] = Chat(chat_id)
-            self.bot.sendMessage(chat_id, "Welcome to Polito Parking Lot! Send /book to reserve a spot, /cancel to cancel.")
+            self.bot.sendMessage(chat_id, "Send /book to reserve a spot, /check to check free spots, /cancel to cancel reservation.")
+        elif text.lower() == '/check':
+            self.chats[chat_id].set_status(Status.check)
+            self.publish({'action': 'check', 'chat_id': chat_id})
         elif text.lower() == '/book':
             self.chats[chat_id].set_status(Status.Input_plate)
             self.bot.sendMessage(chat_id, "Please enter your plate number:")
@@ -98,8 +104,8 @@ class ParkingBot:
                 self.handle_booking(chat_id, text)
             elif self.chats[chat_id].status == Status.Cancel:
                 self.handle_cancel(chat_id, text)
-        else:
-            self.bot.sendMessage(chat_id, "Welcome to Polito Parking Lot! Send /start to start.")
+            else:
+                self.bot.sendMessage(chat_id, "Send /book to reserve a spot, /check to check free spots, /cancel to cancel reservation.")
 
 
     def on_callback_query(self, msg):
@@ -117,7 +123,6 @@ class ParkingBot:
         elif query_data == 'Modify':
             self.chats[chat_id].set_status(Status.Input_plate)
             self.bot.sendMessage(chat_id, "Please enter your plate number:")
-            self.publish(data)
         elif query_data == 'Quit':
             del self.chats[chat_id]
             self.bot.sendMessage(chat_id, "Reservation quit")
@@ -149,8 +154,9 @@ class ParkingBot:
                 
     def confirm (self, chat_id, msg):
         self.bot.sendMessage(chat_id, msg)
-        self.chats[chat_id].set_status(None)   
-        del self.chats[chat_id]    
+        if not self.chats[chat_id].status == Status.check:
+            self.chats[chat_id].set_status(None)   
+            del self.chats[chat_id]    
     
     def handle_cancel(self, chat_id, text):
         plate_license = text.upper()
@@ -170,7 +176,7 @@ class ParkingBot:
         elif now.minute >= 15 and now.minute < 45:    
             next_time = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         else:
-            next_time = now.replace(minute=30, second=0, microsecond=0)
+            next_time = now.replace(minute=30, second=0, microsecond=0) + timedelta(hours=1)
         times = []
         for _ in range(n):
             times.append(next_time)

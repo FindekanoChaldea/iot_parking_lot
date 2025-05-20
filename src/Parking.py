@@ -29,7 +29,9 @@ class Parking():
         self.hourly_rate = 1.50 # euros          
                 
     def book(self, plate_license, expecting_time):
-        if len(self.parkings) + len(self.bookings) < self.num_lots:
+        if plate_license in self.bookings.keys():
+            return [False, f"Car {plate_license} already booked at {(self.bookings[plate_license].expecting_time).strftime('%Y-%m-%d %H:%M:%S')}, please cancel it first"]
+        elif len(self.parkings) + len(self.bookings) < self.num_lots:
                 booking = Car(plate_license, expecting_time = expecting_time)
                 booking.book()
                 self.bookings[plate_license] = booking
@@ -196,6 +198,11 @@ class Parking():
                         result = self.cancel_booking(plate_license)
                         response = [chat_id, result[1]]
                         self.client.publish(self.bot.command_topic, response)
+                    elif data['action'] == 'check':
+                        num_lots = self.num_lots - len(self.parkings) - len(self.bookings)
+                        chat_id = data['chat_id'] 
+                        response = [chat_id, f"Free parking lots: {num_lots}"]
+                        self.client.publish(self.bot.command_topic, response)                  
             except Exception as e:
                 print("Error in notify_thread:", e)
         threading.Thread(target=notify_thread).start()

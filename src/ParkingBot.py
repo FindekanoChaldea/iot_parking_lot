@@ -161,8 +161,13 @@ class ParkingBot:
 
     def generate_time(self, n=4, tz=italy_tz):
         now = datetime.now(tz)
-        ## minute = 30 if now.minute >= 30 else 0
-        if now.minute >= 30:
+        ## time xx:yy
+        ## if yy < 15, next_time = xx:30
+        ## if 15 <= yy < 45, next_time = xx+1:00
+        ## if 45 <= yy < 60, next_time = xx+1:30
+        if now.minute < 15:
+            next_time = now.replace(minute=30, second=0, microsecond=0)
+        elif now.minute >= 15 and now.minute < 45:    
             next_time = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         else:
             next_time = now.replace(minute=30, second=0, microsecond=0)

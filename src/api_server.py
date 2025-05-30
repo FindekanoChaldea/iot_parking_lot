@@ -5,7 +5,7 @@ import sys
 
 sys.path.append(os.path.dirname(__file__))
 
-from services.manager import ParkingManager
+from service_manager import ParkingManager
 
 
 class ParkingAPI:

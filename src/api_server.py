@@ -17,7 +17,7 @@ class ParkingAPI:
     @cherrypy.tools.json_out()
     def GET(self, *uri, **params):
         if not uri:
-            return {"message": "Available endpoints: /devices, /config"}
+            return {"message": "Available endpoints: /devices, /config, /register"}
         
         if uri[0] == "devices":
             return self.manager.get_device_status()
@@ -39,6 +39,21 @@ class ParkingAPI:
                 return {"error": "Missing 'total_slots' in request body"}
             
             return self.manager.update_parking_capacity(data["total_slots"])
+
+        elif uri and uri[0] == "register":
+            data = cherrypy.request.json
+            required_fields = {"lot_id", "device_id", "type", "location"}
+            if not required_fields.issubset(data):
+                cherrypy.response.status = 400
+                return {"error": "Missing required fields: lot_id, device_id, type, location"}
+            
+            topics = self.manager.register_device(
+                data["lot_id"],
+                data["device_id"],
+                data["type"],
+                data["location"]
+            )
+            return {"message": "Device registered", "topics": topics}
         
         else:
             cherrypy.response.status = 404
@@ -48,7 +63,7 @@ class ParkingAPI:
 if __name__ == '__main__':
     cherrypy.config.update({
         'server.socket_host': '0.0.0.0',
-        'server.socket_port': 9090,  # 与 app.py 使用的端口不同，避免冲突
+        'server.socket_port': 9090,
         'log.screen': True
     })
 
@@ -63,3 +78,4 @@ if __name__ == '__main__':
     cherrypy.tree.mount(ParkingAPI(), '/', config)
     cherrypy.engine.start()
     cherrypy.engine.block()
+

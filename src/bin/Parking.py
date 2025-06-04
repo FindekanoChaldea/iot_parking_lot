@@ -10,6 +10,7 @@ import json
 import threading
 from utils import CarStatus, ScannerStatus, GateStatus, PaymentStatus, PaymentMethod
 from zoneinfo import ZoneInfo
+from Catalog import Catalog
 
 italy_tz = ZoneInfo("Europe/Rome")
 
@@ -17,13 +18,15 @@ class Parking():
     exposed = True
         
     def __init__(self, client_id, broker, port):
+        
         self.client = client(client_id, broker, port, self)
+        self.client.start()
+        
         self.bot = None
         self.num_lots = 100
         self.bookings = {}
         self.parkings = {}
         self.devices = {}
-        self.client.start()
         self.free_stop = 30 ##seconds
         self.checking_time = 60 ##seconds
         self.hourly_rate = 1.50 # euros          

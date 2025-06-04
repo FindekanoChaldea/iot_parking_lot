@@ -13,8 +13,8 @@ class ConfigLoader:
                 self.config = json.load(file)
             except json.JSONDecodeError:
                 pass
-        self.mqtt = self.MQTT(self)
-        self.payment_api = self.Payment_api(self)
+        self.MQTT = self.MQTT(self)
+        self.RESTful = self.RESTful(self)
         self.telegram_bot_token = self.config['telegram_bot_token']
         
     class MQTT:
@@ -23,9 +23,16 @@ class ConfigLoader:
             self.broker = config_loader.config['MQTT']['broker']
             self.port = config_loader.config['MQTT']['port']
     
-    class Payment_api:
+    class RESTful:
         def __init__(self, config_loader):
             self.config_loader = config_loader
-            self.host = config_loader.config['payment_api']['host']
-            self.port = config_loader.config['payment_api']['port']
-            self.uri = config_loader.config['payment_api']['uri']
+            self.host = config_loader.config['RESTful']['host']
+            self.port = config_loader.config['RESTful']['port']
+            self.catalog_uri = config_loader.config['RESTful']['catalog_uri']
+            self.passage_uri = config_loader.config['RESTful']['passage_uri']
+            self.config_uri = config_loader.config['RESTful']['config_uri']
+            
+    class Bot:
+        def __init__(self, config_loader):
+            self.config_loader = config_loader
+            self.token = config_loader.telegram_bot_token

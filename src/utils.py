@@ -20,8 +20,8 @@ class GateStatus:
     OPEN = 'open'
 
 class PaymentMethod:
-    CASH = 'cash'
-    CARD = 'card'
+    MACHINE = 'machine'
+    ONLINE = 'online'
 
 class PaymentStatus:
     PENDING = 'pending'
@@ -79,3 +79,16 @@ class FileManager:
             with open(file_path, 'w') as f:
                 json.dump(data, f, indent=4)
             return False
+        
+    def read_json(self, file_path):
+        # Step 1: Check if the file exists
+        if not os.path.exists(file_path):
+            print(f"{file_path} does not exist!")
+            return {}
+        # Step 2: Load the data from the file
+        with open(file_path, 'r') as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                data = {}
+        return data

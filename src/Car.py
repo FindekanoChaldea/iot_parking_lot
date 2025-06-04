@@ -1,7 +1,7 @@
 from datetime import datetime
 from Payment import Payment
 from utils import CarStatus as Status, FileManager
-from thingspeak_upload import ThingSpeakClient
+from bin.thingspeak_upload import ThingSpeakClient
 
 class Car:
     PAID_CARS_FILE = 'tests/paid_cars.json'
@@ -21,7 +21,6 @@ class Car:
         self.total_payment = 0.0
         self.exit_time = None
         self.payment_time = None
-        self.expire_time = 20
         self.fileManager = FileManager()
         
     def book(self):
@@ -32,39 +31,36 @@ class Car:
         self.entry_time = entry_time
         self.status = Status.ENTERED
         
-    def is_expired(self):
-        if (datetime.now() - self.expecting_time).seconds/60 > self.expire_time:
+    def is_expired(self, expire_time):
+        if (datetime.now() - self.expecting_time).total_seconds() > expire_time:
             path = self.fileManager.abpath(self.BOOKINGS_FILE)
             self.fileManager.find_and_delete(path, self.plate_license)
             return True
         else:
             return False
+        
     def cancel(self):
         path = self.fileManager.abpath(self.BOOKINGS_FILE)
         self.fileManager.find_and_delete(path, self.plate_license)
     
     def check(self, amount, payment_method, payment_time):
-        self.payment = Payment(amount, payment_method, payment_time)
+        self.payment = Payment(self.plate_license, amount, payment_method, payment_time)
         self.status = Status.CHECKED
     
     def failPay(self):
         del self.payment
         self.status = Status.CHARGED
        
-    def pay(self):
-        boolean = self.payment.pay()
+    def paid(self):
         self.start_time = self.payment.time
         self.payment_time = self.payment.time
         self.total_payment += self.payment.amount
         self.payment.pay()
         del self.payment
         self.status = Status.PAID
-        
-        # this is just for the exit simulation!!!!!
-        path = self.fileManager.abpath(self.PAID_CARS_FILE)
-        self.save(path)
-        
-        return boolean
+        # # this is just for the exit simulation!!!!!
+        # path = self.fileManager.abpath(self.PAID_CARS_FILE)
+        # self.save(path)
         
     def exit(self, exit_time):
         self.exit_time = exit_time
@@ -97,5 +93,4 @@ class Car:
             )
             print(f"Saved {self.plate_license} to {file_path}")
             print(f"Uploaded {self.plate_license} to ThingSpeak")
-        
-
+            

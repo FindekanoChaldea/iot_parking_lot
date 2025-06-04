@@ -6,20 +6,18 @@ import os
 import json
 from Parking import Parking
 from config_loader import ConfigLoader
-from Device import DeviceManager
+import requests
+import re
+import json
+from Catalog import Catalog
 
 config_loader = ConfigLoader()
-deviceManager = DeviceManager()
 
 client_id = 'ParkingSystem'
 broker = config_loader.mqtt.broker
 port = config_loader.mqtt.port
+URL = f"http://{broker}:{port}"
 parking = Parking(client_id, broker, port)
-parking.connect_device(deviceManager.entrance1)
-parking.connect_device(deviceManager.entrance2)
-parking.connect_device(deviceManager.exit1)
-parking.connect_device(deviceManager.exit2)   
-parking.connect_bot(deviceManager.bot)
 parking.run()   
 
 

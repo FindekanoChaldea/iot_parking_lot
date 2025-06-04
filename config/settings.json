@@ -10,9 +10,11 @@
       "broker": "mqtt.eclipseprojects.io",
       "port": 1883
     },
-    "payment_api": {
-      "host": "127.0.0.1",
+    "RESTful": {
+      "host": "172.20.10.2",
       "port": 8080,
-      "uri": "/payment"
+      "config_uri": "/config",
+      "catalog_uri": "/catalog",
+      "passage_uri": "/passage"
     }
 }

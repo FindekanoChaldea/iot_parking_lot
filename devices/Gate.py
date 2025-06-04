@@ -9,17 +9,55 @@ import json
 from threading import Lock
 from src.utils import GateStatus as Status
 import threading
+import requests
+from src.TimeControl import TimeControl
 
 class Gate():
         
-    def __init__(self, client_id, broker, port, info_topic, command_topic):
+    def __init__(self, URL):
+        self.time_control = TimeControl()
+        self.URL = URL
+        self.URL_DEVICE = ''
+        # continuously try to connect to the server until successful for 60 seconds
+        print('connecting to server...')
+        data = None
+        timer1 = self.time_control.add_timer(60)
+        while not timer1.timeout:
+            try:
+                res = requests.post(self.URL, json = 'newgate')
+                if res and res.ok:
+                    data = res.json
+                    print('initializing gate...')
+                    break
+            except Exception as e:
+                pass
+            time.sleep(1)
+        if timer1.timeout:
+            print("Failed to connect to the server for a long time.")
+            return
+
+        # if successful, get the broker information and initialize the client
+        URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic = data
         self.client = client(client_id, broker, port, self)
         self.client.start()
         self.topic = info_topic
         self.client.subscribe(command_topic)
         self.status = Status.CLOSE
         self.lock = Lock()
-
+        self.URL_UPDATE = URL_UPDATE
+        self.payload = {
+            "client_id": client_id,
+            "parking_lot_id": parking_lot_id,
+            "info_topic_gate": info_topic,
+            "command_topic_gate": command_topic
+        }
+        try:
+            res = requests.post(self.URL_UPDATE, json = self.payload) 
+        except Exception as e:
+            print("Catalog connection failed:", e)
+        self.notice_interval = 120  # seconds
+        print('gate initialized')
+        
     def publish(self, message):
         self.client.publish(self.topic, message)
         print(f"Published message: {message} to topic: {self.topic}")
@@ -44,6 +82,17 @@ class Gate():
                     print("\nno more parking lots available\n")
             else :
                 Exception ("Unknown command received")
+                
+    def run(self):
+        def keep_alive():
+            while True:
+                time.sleep(self.notice_interval)
+                try:
+                    res = requests.post(self.URL_UPDATE, json = self.payload) 
+                    print("[Sensor] Data sent:", res.text)
+                except Exception as e:
+                    print("[Sensor] POST failed:", e)      
+        threading.Thread(target=keep_alive).start()
              
     
         

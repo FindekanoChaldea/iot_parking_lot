@@ -14,7 +14,7 @@ from TimeControl import TimeControl
 italy_tz = ZoneInfo("Europe/Rome")
 
 class Passage:
-    def __init__(self, parking_lot_id, id, gate_id, info_topic_gate, command_topic_gate, scanner_id, info_topic_scanner, command_topic_scanner, timestamp = None):
+    def __init__(self, parking_lot_id, id, scanner_id, info_topic_scanner, command_topic_scanner, gate_id, info_topic_gate, command_topic_gate, timestamp = None):
         self.parking_lot_id = parking_lot_id
         self.id = id
         self.gate_id = gate_id
@@ -202,9 +202,9 @@ class Parking():
     
     def disconnect_device(self, passage_id):
         if passage_id in self.passages.keys():
-            del self.passages[passage_id]
             self.client.unsubscribe(self.passages[passage_id].info_topic_scanner)
             self.client.unsubscribe(self.passages[passage_id].info_topic_gate)
+            del self.passages[passage_id]
             print(f"Disconnected passage {passage_id} with gate {self.passages[passage_id].gate_id} and scanner {self.passages[passage_id].scanner_id}")
         else:
             print(f"Passage {passage_id} not found in devices")
@@ -298,9 +298,6 @@ class Parking():
                         message = self.paid(plate_license)
                         response = [chat_id, message]
                         self.client.publish(self.bot.command_topic, response)
-                        
-
-                    
             except Exception as e:
                 print("Error in notify_thread:", e)
         threading.Thread(target=notify_thread).start()
@@ -330,15 +327,15 @@ class Parking():
                     try:
                         res = requests.get(self.URL_PASSAGE)
                         if res and res.ok:
+                            print("received new passage data from catalog")
                             data = res.json()
                             break
                     except Exception:
                         pass
                     time.sleep(1)
-                data = res.json()
                 if data[0]:
-                    parking_lot_id, id, gate_id, info_topic_gate, command_topic_gate, scanner_id, info_topic_scanner, command_topic_scanner = data
-                    passage = Passage(parking_lot_id, id, gate_id, info_topic_gate, command_topic_gate, scanner_id, info_topic_scanner, command_topic_scanner)
+                    parking_lot_id, id, scanner_id, info_topic_scanner, command_topic_scanner, gate_id, info_topic_gate, command_topic_gate = data[1]
+                    passage = Passage(parking_lot_id, id, scanner_id, info_topic_scanner, command_topic_scanner, gate_id, info_topic_gate, command_topic_gate)
                     self.connect_device(passage)
                     print(f"New passage {id} connected with gate {gate_id} and scanner {scanner_id} ")
                 else:
@@ -347,34 +344,6 @@ class Parking():
                     print(f"Passage {passage_id} disconnected")
                 time.sleep(1)
         threading.Thread(target=listening_thread).start()
-        
-    # def listening_config(self):
-    #     def listening_thread():
-    #         while True:
-    #             try:
-    #                 res = requests.get(self.URL_CONFIG)
-    #                 if res and res.ok:
-    #                     break
-    #             except Exception:
-    #                 pass
-    #             time.sleep(1)
-    #         data = res.json()
-    #         if 'num_lots' in data.keys():
-    #             self.num_lots = data['num_lots']
-    #             print(f"Configuration updated: num_lots={self.num_lots}")
-    #         if 'free_stop' in data.keys():
-    #             self.free_stop = data['free_stop']
-    #             print(f"Configuration updated: free_stop={self.free_stop} seconds")
-    #         if 'checking_time' in data.keys():
-    #             self.check_pay_interval = data['checking_time']
-    #             print(f"Configuration updated: checking_time={self.check_pay_interval} seconds")
-    #         if 'hourly_rate' in data.keys():
-    #             self.hourly_rate = data['hourly_rate']
-    #             print(f"Configuration updated: hourly_rate={self.hourly_rate} euros")
-    #         if 'check_book_interval' in data.keys():
-    #             self.book_filter_interval = data['check_book_interval']
-    #             print(f"Configuration updated: check_book_interval={self.book_filter_interval} seconds")
-    #     threading.Thread(target=listening_thread).start()
        
        
 if __name__ == '__main__': 

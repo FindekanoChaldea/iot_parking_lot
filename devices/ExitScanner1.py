@@ -11,7 +11,7 @@ exitScanner1 = Scanner(URL)
 exitScanner1.run()
 
 while True:
-    c = input("Press Enter to scan a plate or type 'q' to quit: ")
+    c = input("Press Enter to scan a plate or type 'q' to quit: \n")
     if c.lower() == 'q':
         break
     exitScanner1.scan_plate(c)

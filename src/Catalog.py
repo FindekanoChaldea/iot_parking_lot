@@ -36,7 +36,10 @@ class Passage:
     def save(self, path):
         if os.path.exists(path):
             with open(path, "r") as f:
-                data = json.load(f)
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:
+                    data = {}
         else:
             data = {}
         lot_id = self.parking_lot_id
@@ -90,7 +93,10 @@ class Bot:
     def save(self, path):
         if os.path.exists(path):
             with open(path, "r") as f:
-                data = json.load(f)
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:
+                    data = {}
         else:
             data = {}
         # Save the bot under its ID
@@ -116,7 +122,7 @@ class Bot:
 class Catalog:
     
     class ParkingConfig:
-        def __init__(self, list):
+        def __init__(self, catalog, list):
             (
             # parking properties
             self.parking_id,
@@ -141,9 +147,9 @@ class Catalog:
             self.time_out,
             self.notice_interval
             ) =list
-            self.URL_CATALOG = f"{self.catalog_uri}{self.catalog_uri}"
-            self.URL_PASSAGE = f"{self.passage_uri}{self.passage_uri}"
-            self.URL_CONFIG = f"{self.config_uri}{self.config_uri}"
+            self.URL_CATALOG = f"{catalog.URL}{self.catalog_uri}"
+            self.URL_PASSAGE = f"{catalog.URL}{self.passage_uri}"
+            self.URL_CONFIG = f"{catalog.URL}{self.config_uri}"
             
         def parking_properties(self):
             return [
@@ -185,7 +191,7 @@ class Catalog:
         
     def load_config(self, list):
         try:
-            self.parking_config = self.ParkingConfig(list)
+            self.parking_config = self.ParkingConfig(self,list)
             self.listen_devices()
             self.check_devices()
             return [True, "configuration loaded"]
@@ -199,8 +205,8 @@ class Catalog:
             try:
                 if action == 'POST':
                     res = requests.post(url, json = post)
-                    if res.ok:
-                        data = res.text
+                    if res and res.ok:
+                        data = res.json()
                         break
                     else:
                         time.sleep(0.5)
@@ -208,9 +214,7 @@ class Catalog:
                     res = requests.get(url)
                     if res.ok:
                         data = res.json()
-                        if data is None:
-                            continue
-                        else: break
+                        break
                     else:
                         time.sleep(0.5)
             except requests.exceptions.RequestException as e:
@@ -277,33 +281,32 @@ class Catalog:
     def pair(self, scanner_id, gate_id, passage_id, parking_lot_id):
         # Check if the parking lot exists
         msg1 = []
-        if parking_lot_id not in self.devices:
+        if parking_lot_id not in self.devices.keys():
             msg1 = [False, f"Parking lot {parking_lot_id} does not exist"]
         # Check if the scanner and gate exist and are not already paired
-        elif scanner_id not in self.devices[parking_lot_id] or gate_id not in self.devices[parking_lot_id]:
+        elif scanner_id not in self.devices[parking_lot_id].keys() or gate_id not in self.devices[parking_lot_id].keys():
             msg1 = [False, f"Scanner {scanner_id} or gate {gate_id} does not exist in parking lot {parking_lot_id}."]
         # Check if the scanner and gate are already paired
         elif self.devices[parking_lot_id][scanner_id].paired or self.devices[parking_lot_id][gate_id].paired:
             msg1 = [False, f"Scanner {scanner_id} or gate {gate_id} is already configured."]
         # Check if the passage already exists
-        elif passage_id in self.passages[parking_lot_id]:
-            msg1 = [False, f"Passage {passage_id} already exists in parking lot {parking_lot_id}."]
+        elif passage_id in self.passages[parking_lot_id].keys():
+            msg1 = [False, f"Passage {passage_id} already exists in parking lot {parking_lot_id}..."]
         # Create the passage with the scanner and gate
         else:
             scanner = self.devices[parking_lot_id][scanner_id]
             gate = self.devices[parking_lot_id][gate_id]
             passage = Passage(passage_id, scanner, gate, parking_lot_id)
-            scanner.paired = True
-            gate.paired = True
             self.passages[parking_lot_id][passage_id] = passage
             msg1 = [True, f"New passage {passage_id} created with scanner {scanner_id} and gate {gate_id} in parking lot {parking_lot_id}."]
             msg2 = [True, passage.info()]
             timeout, _ = self.get_response(self.parking_config.URL_PASSAGE, 'POST', 5, msg2)
             if timeout:
-                print(f"Failed to connect to the ControlCenter.")
-                return
+                return[False, f"Failed to connect to the ControlCenter..."]
             print(f"New passage {passage_id} created with scanner {scanner_id} and gate {gate_id} in parking lot {parking_lot_id}.")
-            passage.save(self.PATH)
+            # passage.save(self.PATH)
+            scanner.paired = True
+            gate.paired = True
         return msg1
     
     def unpair(self, passage_id, parking_lot_id):
@@ -396,7 +399,7 @@ class Catalog:
                         for lot in self.passages.values():
                             for passage in lot.values():
                                 for device in [passage.scanner, passage.gate]:
-                                    URL = device.URL
+                                    URL = device.URL_UPDATE
                                     res = requests.get(URL)
                                     if res and res.ok:
                                         data = res.json()
@@ -498,12 +501,12 @@ class Catalog:
                         return self.connecting_device.device_msg
                     else: print("Failed, please try again.")
                 elif data.lower() == 'parking_properties':
-                    if self.parking_config:
-                        l = self.parking_config.parking_properties()
+                    while not self.parking_config:
+                        time.sleep(0.5)
+                    l = self.parking_config.parking_properties()
                     if l:
                         print("Parking properties loaded to ControlCenter successfully.")
                         return l
-                
             
         elif uri[0] == 'catalog':
             if not self.parking_config:
@@ -535,7 +538,7 @@ class Catalog:
                 elif data[0] == 'bot':
                     _, id, token = data
                     if not self.connecting_device:
-                        return "No device is initiating, please intiate the device first."
+                        return [False,"No device is initiating, please intiate the device first."]
                     self.connecting_device.connect_bot(id, token)
                     return self.connecting_device.interface_msg
                 else:
@@ -544,7 +547,7 @@ class Catalog:
                 
         else:
             self.last_post[uri] = data
-            return "Data send successfully"               
+            return [True, "Data send successfully"]               
 
 if __name__ == "__main__":
     

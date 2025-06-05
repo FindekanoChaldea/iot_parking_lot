@@ -36,12 +36,12 @@ class ParkingConfig:
         self.book_filter_interval = 600  # seconds, every 10 minutes   
         self.payment_filter_interval = 60 ##seconds 
         
-        self.unpaired_time_limit = 300  # Check every 5 minutes
-        self.listen_device_info_interval = 300  # Check every 5 minutes
+        self.unpaired_time_limit = 3000  # Check every 5 minutes
+        self.listen_device_info_interval = 600  # Check every 10 minutes
         
         self.book_start_time = 30
         self.time_out = 300
-        self.notice_interval = 120
+        self.notice_interval = 300
     
     def load_config(self):
         return {"config": [
@@ -364,7 +364,7 @@ while True:
                 print("Invalid bot ID format. Please use 'bot#' format.\n")
     
     elif cmd == 'pair':
-        c == 'pair'
+        c = 'pair'
         in_out = ''
         quit = False
         while True:
@@ -410,7 +410,7 @@ while True:
                 print("Invalid input. Please ensure the IDs are valid.\n")
                        
     elif cmd == 'unpair':
-        c == 'unpair'
+        c = 'unpair'
         while True:
             parking_lot_id = input("Enter the ID of the parking lot where you want to unpair a passage (format: lot + Number), or 'q' to quit: ").lower()
             if parking_lot_id == 'q':

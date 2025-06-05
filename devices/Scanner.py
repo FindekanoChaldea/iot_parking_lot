@@ -59,11 +59,11 @@ class Scanner():
         print(f"Published message: {message} to topic: {self.topic}\n")
     
     def scan_plate(self, plate_license):
-        while self.status == Status.SCANNED:
-            time.sleep(0.1)  # Wait for the scanner to be ready
-            pass
-        self.publish(plate_license)
-        self.status = Status.SCANNED
+        if self.status == Status.SCANNED:
+            print("Please wait the previous car to pass.")
+        else:
+            self.publish(plate_license)
+            self.status = Status.SCANNED
     
     def notify(self, topic, payload):
         payload = json.loads(payload)

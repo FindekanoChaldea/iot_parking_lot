@@ -11,9 +11,10 @@ entranceScanner1 = Scanner(URL)
 entranceScanner1.run()
 
 while True:
-    c = input("Press Enter to scan a plate or type 'q' to quit: ")
+    c = input("Press Enter to scan a plate or type 'q' to quit: \n")
     if c.lower() == 'q':
         break
     entranceScanner1.scan_plate(c)
     time.sleep(1)  # Simulate a delay between scans
+    
         

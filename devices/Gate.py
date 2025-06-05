@@ -39,6 +39,7 @@ class Gate():
         URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic, notice_interval = data
         self.client = client(client_id, broker, port, self)
         self.client.start()
+        time.sleep(120)
         self.topic = info_topic
         self.client.subscribe(command_topic)
         self.status = Status.CLOSE

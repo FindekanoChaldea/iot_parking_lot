@@ -14,8 +14,12 @@ class ParkingMQTT:
         # register the callback
         self._paho_mqtt.on_connect = self.OnConnect
         self._paho_mqtt.on_message = self.OnMessageReceived
+        self._paho_mqtt.on_subscribe = self.OnSubscribe
  
- 
+    def OnSubscribe(self, paho_mqtt, userdata, mid, granted_qos):
+        print('subscribed to %s'%mid)
+        print ("subscribed!" )
+        
     def OnConnect (self, paho_mqtt, userdata, flags, rc):
         print ("Connected to %s with result code: %d" % (self.broker, rc))
 
@@ -26,17 +30,17 @@ class ParkingMQTT:
  
     def publish (self, topic, msg):
         # publish a message with a certain topic
-        self._paho_mqtt.publish(topic, json.dumps(msg), 2)
+        self._paho_mqtt.publish(topic, json.dumps(msg), 0)
 
  
     def subscribe (self, topic):
         
         # subscribe for a topic
-        self._paho_mqtt.subscribe(topic,2)
+        res, mid = self._paho_mqtt.subscribe(topic,0)
         # just to remember that it works also as a subscriber
         self._isSubscriber = True
         self._topic = topic
-        print ("subscribed to %s" % (topic))
+        print('subscribed to %s'%mid)
  
     def start(self):
         #manage connection to broker

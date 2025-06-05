@@ -37,6 +37,7 @@ class Scanner():
         URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic, notice_interval = data
         self.client = client(client_id, broker, port, self)
         self.client.start()
+        time.sleep(10)
         self.topic = info_topic
         self.client.subscribe(command_topic)
         self.status = Status.STANDBY
@@ -71,13 +72,11 @@ class Scanner():
             self.status = Status.STANDBY 
     
     def run(self):
-        def keep_alive():
-            while True:
-                time.sleep(self.notice_interval)
-                try:
-                    res = requests.post(self.URL_UPDATE, json = self.payload) 
-                    print("[Sensor] Data sent:", res.text)
-                except Exception as e:
-                    print("[Sensor] POST failed:", e)      
-        threading.Thread(target=keep_alive).start()
+        while True:
+            time.sleep(self.notice_interval)
+            try:
+                res = requests.post(self.URL_UPDATE, json = self.payload) 
+                print("[Sensor] Data sent:", res.text)
+            except Exception as e:
+                print("[Sensor] POST failed:", e)      
         

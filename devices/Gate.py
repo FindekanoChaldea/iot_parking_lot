@@ -17,7 +17,6 @@ class Gate():
     def __init__(self, URL):
         self.time_control = TimeControl()
         self.URL = URL
-        self.URL_DEVICE = ''
         # continuously try to connect to the server until successful for 60 seconds
         print('connecting to server...')
         data = None
@@ -26,7 +25,7 @@ class Gate():
             try:
                 res = requests.post(self.URL, json = 'newgate')
                 if res and res.ok:
-                    data = res.json
+                    data = res.json()
                     print('initializing gate...')
                     break
             except Exception as e:
@@ -37,7 +36,7 @@ class Gate():
             return
 
         # if successful, get the broker information and initialize the client
-        URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic = data
+        URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic, notice_interval = data
         self.client = client(client_id, broker, port, self)
         self.client.start()
         self.topic = info_topic
@@ -55,7 +54,7 @@ class Gate():
             res = requests.post(self.URL_UPDATE, json = self.payload) 
         except Exception as e:
             print("Catalog connection failed:", e)
-        self.notice_interval = 120  # seconds
+        self.notice_interval = notice_interval  # seconds
         print('gate initialized')
         
     def publish(self, message):

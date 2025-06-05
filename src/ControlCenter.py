@@ -9,6 +9,7 @@ import threading
 from utils import CarStatus, ScannerStatus, GateStatus
 from zoneinfo import ZoneInfo
 import requests
+from TimeControl import TimeControl
 
 italy_tz = ZoneInfo("Europe/Rome")
 
@@ -25,17 +26,44 @@ class Passage:
         self.timestamp = timestamp
         
 class Parking():
-    exposed = True
         
-    def __init__(self, client_id, broker, port, URL):
+    def __init__(self, URL):
+        #utilities
+        self.time_control = TimeControl()
         # RESTFul
         self.URL = URL
-        # URL
-        self.URL = URL
-        self.URL_PASSAGE= ''
-        self.URL_CONFIG = ''
+        print('connecting to server...')
+        timer1 = self.time_control.add_timer(60)
+        data = None
+        while not timer1.timeout:
+            try:
+                res = requests.post(self.URL, json = 'parking_properties')
+                if res and res.ok:
+                    data = res.json()
+                    print('initializing Parksystem...')
+                    break
+            except Exception as e:
+                pass
+            time.sleep(1)
         # MQTT client initialization
-        self.client = client(client_id, broker, port, self)
+        (
+        self.id,
+        self.broker,
+        self.port,
+        self.URL_CATALOG,
+        self.URL_PASSAGE,
+        self.URL_CONFIG,
+        
+        self.num_lots,
+        self.free_stop,
+        self.check_pay_interval,        
+        self.booking_expire_time,
+        self.hourly_rate,
+        self.book_filter_interval,
+        self.payment_filter_interval
+        ) = data
+        
+        self.client = client(self.id, self.broker, self.port, self)
         self.client.start()
         
         self.bot = None
@@ -43,16 +71,15 @@ class Parking():
         self.parkings = {}
         self.passages = {}
         
-        self.num_lots = 100
-        self.free_stop = 60 ##seconds
-        self.check_pay_interval = 60 ##seconds
-        self.booking_expire_time = 300 ##seconds
-        self.hourly_rate = 1.50 # euros   
-        self.book_filter_interval = 600  # seconds, every 10 minutes   
-        self.payment_filter_interval = 60 ##seconds 
-        
+        # self.num_lots = 100
+        # self.free_stop = 60 ##seconds
+        # self.check_pay_interval = 60 ##seconds
+        # self.booking_expire_time = 300 ##seconds
+        # self.hourly_rate = 1.50 # euros
+        # self.book_filter_interval = 600  # seconds, every 10 minutes   
+        # self.payment_filter_interval = 60 ##seconds 
+        print(f"Parking system initialized with {self.num_lots} parking lots, free stop time: {self.free_stop} seconds, hourly rate: {self.hourly_rate} euros")
         self.listening_catalog()
-        self.listening_config()   
                 
     def book(self, plate_license, expecting_time):
         if plate_license in self.bookings.keys():
@@ -321,45 +348,42 @@ class Parking():
                 time.sleep(1)
         threading.Thread(target=listening_thread).start()
         
-    def listening_config(self):
-        def listening_thread():
-            while True:
-                try:
-                    res = requests.get(self.URL_CONFIG)
-                    if res and res.ok:
-                        break
-                except Exception:
-                    pass
-                time.sleep(1)
-            data = res.json()
-            if 'num_lots' in data.keys():
-                self.num_lots = data['num_lots']
-                print(f"Configuration updated: num_lots={self.num_lots}")
-            if 'free_stop' in data.keys():
-                self.free_stop = data['free_stop']
-                print(f"Configuration updated: free_stop={self.free_stop} seconds")
-            if 'checking_time' in data.keys():
-                self.check_pay_interval = data['checking_time']
-                print(f"Configuration updated: checking_time={self.check_pay_interval} seconds")
-            if 'hourly_rate' in data.keys():
-                self.hourly_rate = data['hourly_rate']
-                print(f"Configuration updated: hourly_rate={self.hourly_rate} euros")
-            if 'check_book_interval' in data.keys():
-                self.book_filter_interval = data['check_book_interval']
-                print(f"Configuration updated: check_book_interval={self.book_filter_interval} seconds")
-        threading.Thread(target=listening_thread).start()
+    # def listening_config(self):
+    #     def listening_thread():
+    #         while True:
+    #             try:
+    #                 res = requests.get(self.URL_CONFIG)
+    #                 if res and res.ok:
+    #                     break
+    #             except Exception:
+    #                 pass
+    #             time.sleep(1)
+    #         data = res.json()
+    #         if 'num_lots' in data.keys():
+    #             self.num_lots = data['num_lots']
+    #             print(f"Configuration updated: num_lots={self.num_lots}")
+    #         if 'free_stop' in data.keys():
+    #             self.free_stop = data['free_stop']
+    #             print(f"Configuration updated: free_stop={self.free_stop} seconds")
+    #         if 'checking_time' in data.keys():
+    #             self.check_pay_interval = data['checking_time']
+    #             print(f"Configuration updated: checking_time={self.check_pay_interval} seconds")
+    #         if 'hourly_rate' in data.keys():
+    #             self.hourly_rate = data['hourly_rate']
+    #             print(f"Configuration updated: hourly_rate={self.hourly_rate} euros")
+    #         if 'check_book_interval' in data.keys():
+    #             self.book_filter_interval = data['check_book_interval']
+    #             print(f"Configuration updated: check_book_interval={self.book_filter_interval} seconds")
+    #     threading.Thread(target=listening_thread).start()
        
        
 if __name__ == '__main__': 
     from config_loader import ConfigLoader
     config_loader = ConfigLoader()
-    client_id = 'ParkingSystem'
-    broker = config_loader.MQTT.broker
-    port = config_loader.MQTT.port
-    host = config_loader.RESTful.host
+    host_RESTful = config_loader.RESTful.host
     port_RESTFUL = config_loader.RESTful.port
-    URL = f"http://{host}:{port_RESTFUL}"
-    parking = Parking(client_id, broker, port, URL)
+    URL = f"http://{host_RESTful}:{port_RESTFUL}"
+    parking = Parking(URL)
     parking.run()
 
 

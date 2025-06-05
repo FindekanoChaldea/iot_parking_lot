@@ -1,22 +1,19 @@
-import os
-import  json
-import  time
-import random
 from Scanner import Scanner
+import  time
+from src.config_loader import ConfigLoader
 
-        
-client_id = 'EntranceScanner2'
-broker = "mqtt.eclipseprojects.io"
-port = 1883
-pub_topic = 'polito_parking/entrance/scanner2/info'
-sub_topic = 'polito_parking/entrance/scanner2/command'
-entranceScanner2 = Scanner(client_id, broker, port, pub_topic, sub_topic)
-# Simulate with fake data in teast/fake_cars.json
-path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tests', 'fake_cars_2.json')
-cars = []
-with open(path, 'r') as file:
-    cars = json.load(file)
-for car in cars:
-    entranceScanner2.scan_plate(car)
-    time.sleep(random.randint(3, 10))  # Simulate random time intervals
+
+config_loader = ConfigLoader()
+host = config_loader.RESTful.host
+port = config_loader.RESTful.port
+URL = f"http://{host}:{port}"
+entranceScanner2 = Scanner(URL)
+entranceScanner2.run()
+
+while True:
+    c = input("Press Enter to scan a plate or type 'q' to quit: ")
+    if c.lower() == 'q':
+        break
+    entranceScanner2.scan_plate(c)
+    time.sleep(1)  # Simulate a delay between scans
         

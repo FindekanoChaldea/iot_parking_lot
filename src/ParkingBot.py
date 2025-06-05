@@ -94,40 +94,22 @@ class ParkingBot:
     def __init__(self, URL):
         self.time_control = TimeControl()
         self.URL = URL
-        self.URL_DEVICE = ''
         # continuously try to connect to the server until successful for 60 seconds
         print('connecting to server...')
         timer1 = self.time_control.add_timer(60)
+        data = None
         while not timer1.timeout:
             try:
                 res = requests.post(self.URL, json = 'newbot')
                 if res and res.ok:
-                    self.URL_DEVICE = res.text
+                    data = res.json()
                     print('initializing bot')
                     break
             except Exception as e:
                 pass
             time.sleep(1)
-        if timer1.timeout:
-            print("Failed to connect to the server for a long time.")
-            return
-        # continuously try to get the broker information until successful for 60 seconds
-        timer2 = self.time_control.add_timer(60)
-        data = None
-        while not timer2.timeout:
-            try:
-                res = requests.get(self.URL_DEVICE)
-                if res and res.ok:
-                    data = res.json()
-                    break
-            except Exception:
-                pass
-            time.sleep(1)
-        if timer2.timeout:
-            print("Failed to get the broker information for a long time.")
-            return
         # if successful, get the broker information and initialize the client
-        token, URL_UPDATE, broker, port, client_id, info_topic, command_topic = data
+        token, URL_UPDATE, broker, port, client_id, info_topic, command_topic, book_start_time, time_out, notice_interval = data
         self.client = client(client_id, broker, port, self)
         self.client.start()
         self.topic = info_topic
@@ -154,9 +136,9 @@ class ParkingBot:
         }
         
         # Necessary properties
-        self.book_start_time = 30  # 30 minutes after the current time
-        self.time_out = 300  # Timeout for each inactive chat session in seconds
-        self.notice_interval = 120  # seconds
+        self.book_start_time = book_start_time  # 30 minutes after the current time
+        self.time_out = time_out  # Timeout for each inactive chat session in seconds
+        self.notice_interval = notice_interval # seconds
         print('bot initialized')
         
     def __init__(self, token, client_id, broker, port, info_topic, command_topic):

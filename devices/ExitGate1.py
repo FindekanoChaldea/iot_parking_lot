@@ -1,11 +1,11 @@
 from Gate import Gate
-import time
+import  time
+from src.config_loader import ConfigLoader
 
-client_id = 'ExitGate1'
-broker = "mqtt.eclipseprojects.io"
-port = 1883
-pub_topic = 'polito_parking/exit/gate1/info'
-sub_topic = 'polito_parking/exit/gate1/command'
-exitGate1 = Gate(client_id, broker, port, pub_topic, sub_topic)
-while True: 
-    time.sleep(1)
+
+config_loader = ConfigLoader()
+host = config_loader.RESTful.host
+port = config_loader.RESTful.port
+URL = f"http://{host}:{port}"
+exitGate1 = Gate(URL)
+exitGate1.run()

@@ -117,24 +117,51 @@ class Catalog:
     
     class ParkingConfig:
         def __init__(self, list):
-            (self.catalog_uri,
+            (
+            # parking properties
+            self.parking_id,
+            self.broker,
+            self.port,
+            self.catalog_uri,
             self.passage_uri,
             self.config_uri,
+            self.num_lots,
             self.free_stop,
             self.check_pay_interval,
             self.booking_expire_time,
             self.hourly_rate,
             self.book_filter_interval,
             self.payment_filter_interval,
-
+            # catalog
             self.unpaired_time_limit,
             self.listen_device_info_interval,
             
+            #devices
+            self.book_start_time,
+            self.time_out,
             self.notice_interval
             ) =list
             self.URL_CATALOG = f"{self.catalog_uri}{self.catalog_uri}"
             self.URL_PASSAGE = f"{self.passage_uri}{self.passage_uri}"
             self.URL_CONFIG = f"{self.config_uri}{self.config_uri}"
+            
+        def parking_properties(self):
+            return [
+                self.parking_id,
+                self.broker,
+                self.port,
+                self.URL_CATALOG,
+                self.URL_PASSAGE,
+                self.URL_CONFIG,
+                
+                self.num_lots,
+                self.free_stop,
+                self.check_pay_interval,        
+                self.booking_expire_time,
+                self.hourly_rate,
+                self.book_filter_interval,
+                self.payment_filter_interval
+            ]
     exposed = True 
     def __init__(self, URL, path):
         # utilities
@@ -155,11 +182,15 @@ class Catalog:
         self.toll_machines = {}
         self.bot = None
         
-        self.listen_devices()
-        self.check_devices()
         
     def load_config(self, list):
-        self.parking_config = self.ParkingConfig(list)
+        try:
+            self.parking_config = self.ParkingConfig(list)
+            self.listen_devices()
+            self.check_devices()
+            return [True, "configuration loaded"]
+        except Exception as e:
+            return[False, f"Failed to load configuration: {e}"]
     
     def get_response(self, url, action, timeout, post = None):
         timer = self.time_control.add_timer(timeout)
@@ -202,9 +233,9 @@ class Catalog:
             SCANNER = 'scanner'
             GATE = 'gate'
             BOT = 'bot'
-        def __init__(self, calalog):
+        def __init__(self, catalog):
             self.type = None
-            self.catalog = calalog
+            self.catalog = catalog
             self.device_initiating = False
             self.device_msg = None
             self.interface_msg = None
@@ -231,13 +262,13 @@ class Catalog:
             msg1 = [False, f"{in_out} {type} {id} already exists in parking lot {parking_lot_id}."]
         # Create a new device
         else:
-            info_topic= f"parking/{parking_lot_id}/{in_out}/{id}/info",
-            command_topic = f"parking/{parking_lot_id}/{in_out}/{id}/command",
+            info_topic= f"parking/{parking_lot_id}/{in_out}/{id}/info"
+            command_topic = f"parking/{parking_lot_id}/{in_out}/{id}/command"
             URL = f"{self.URL}/{parking_lot_id}/{in_out}/{type}/{id}"
             device = Device(id, parking_lot_id, info_topic, command_topic, URL)
             msg1 =  [True, f"New {in_out} {type} {id} added to parking lot {parking_lot_id}."]
             # Send the device information to the device
-            msg2 = [URL, self.broker, self.port, id, parking_lot_id, info_topic, command_topic]
+            msg2 = [URL, self.parking_config.broker, self.parking_config.port, id, parking_lot_id, info_topic, command_topic, self.parking_config.notice_interval ]
             # Add the device to the catalog 
             self.devices[parking_lot_id][id] = device
             print(f"New {in_out} {type} {id} added to parking lot {parking_lot_id}.")
@@ -314,7 +345,7 @@ class Catalog:
             self.bot = Bot(id, token, info_topic, command_topic)
             msg1 =  [True, f"New bot {id} added."]
             # Send the bot information to the device
-            msg2 = [token, URL, self.broker, self.port, id, info_topic, command_topic]
+            msg2 = [token, URL, self.parking_config.broker, self.parking_config.port, id, info_topic, command_topic, self.parking_config.book_start_time, self.parking_config.time_out, self.parking_config.notice_interval]
         return msg1 , msg2
     
     def load_device(self):
@@ -388,7 +419,7 @@ class Catalog:
                                         now = time.time()
                                         if now - start > self.parking_config.listen_device_info_interval:  # If the device has not responded for within given minutes
                                             warning += (
-                                                f"Device {device.id} in {device.parking_lot_id} is not responding for {math.ceil(self._info/60)} miniutes.\n"
+                                                f"Device {device.id} in {device.parking_lot_id} is not responding for {math.ceil(self.parking_config.listen_device_info_interval/60)} miniutes.\n"
                                                 f"Please check the device.\n"
                                             )
                                             issue = True  
@@ -431,9 +462,7 @@ class Catalog:
                 try:
                     l = data.get('config', None)
                     if l:   
-                        self.load_config(l)
-                        print("Parking configuration loaded successfully.")
-                        return[True, "Configuration loaded successfully."]
+                        return self.load_config(l)
                 except Exception as e:
                     return[False, f"Failed to load configuration: {e}"]
                 
@@ -468,38 +497,50 @@ class Catalog:
                         print(f"Configuration sent to {self.connecting_device.refer}.")
                         return self.connecting_device.device_msg
                     else: print("Failed, please try again.")
+                elif data.lower() == 'parking_properties':
+                    if self.parking_config:
+                        l = self.parking_config.parking_properties()
+                    if l:
+                        print("Parking properties loaded to ControlCenter successfully.")
+                        return l
+                
             
         elif uri[0] == 'catalog':
-            if data[0] == 'device':
-                return self.load_device()
-            elif data[0] == 'passage':
-                return self.load_passage()
-            elif data[0] == 'parking_lot':
-                parking_lot_id = data[1]
-                return self.add_parking_lot(parking_lot_id)
-            elif data[0] == 'pair':
-                _, scanner_id, gate_id, passage_id, parking_lot_id = data
-                return self.pair(scanner_id, gate_id, passage_id, parking_lot_id) 
-            elif data[0] == 'unpair':
-                _, passage_id, parking_lot_id = data
-                return self.unpair(passage_id, parking_lot_id)
-            elif (data[0] == 'entrance_gate' or data[0] == 'exit_gate' 
-                or data[0] == 'entrance_scanner' or data[0] == 'exit_scanner'):
-                in_out, type = data[0].split('_')
-                _, id, parking_lot_id = data
-                if not self.connecting_device:
-                    return "No device is initiating, please intiate the device first."
-                self.connecting_device.connect_device(id, parking_lot_id, in_out, type)
-                return self.connecting_device.interface_msg
-            elif data[0] == 'bot':
-                _, id, token = data
-                if not self.connecting_device:
-                    return "No device is initiating, please intiate the device first."
-                self.connecting_device.connect_bot(id, token)
-                return self.connecting_device.interface_msg
+            if not self.parking_config:
+                if data[0] == 'config':
+                    return self.load_config(data[1])
+                else: return [False, "Please load configuration first"]
             else:
-                cherrypy.response.status = 400
-                return "Invalid request"
+                if data[0] == 'device':
+                    return self.load_device()
+                elif data[0] == 'passage':
+                    return self.load_passage()
+                elif data[0] == 'parking_lot':
+                    parking_lot_id = data[1]
+                    return self.add_parking_lot(parking_lot_id)
+                elif data[0] == 'pair':
+                    _, scanner_id, gate_id, passage_id, parking_lot_id = data
+                    return self.pair(scanner_id, gate_id, passage_id, parking_lot_id) 
+                elif data[0] == 'unpair':
+                    _, passage_id, parking_lot_id = data
+                    return self.unpair(passage_id, parking_lot_id)
+                elif (data[0] == 'entrance_gate' or data[0] == 'exit_gate' 
+                    or data[0] == 'entrance_scanner' or data[0] == 'exit_scanner'):
+                    in_out, type = data[0].split('_')
+                    _, id, parking_lot_id = data
+                    if not self.connecting_device:
+                        return [False, "No device is initiating, please intiate the device first."]
+                    else: self.connecting_device.connect_device(id, parking_lot_id, in_out, type)
+                    return self.connecting_device.interface_msg
+                elif data[0] == 'bot':
+                    _, id, token = data
+                    if not self.connecting_device:
+                        return "No device is initiating, please intiate the device first."
+                    self.connecting_device.connect_bot(id, token)
+                    return self.connecting_device.interface_msg
+                else:
+                    cherrypy.response.status = 400
+                    return "Invalid request"   
                 
         else:
             self.last_post[uri] = data

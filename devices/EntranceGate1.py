@@ -8,5 +8,4 @@ host = config_loader.RESTful.host
 port = config_loader.RESTful.port
 URL = f"http://{host}:{port}"
 entranceGate1 = Gate(URL)
-while True: 
-    time.sleep(1)
+entranceGate1.run()

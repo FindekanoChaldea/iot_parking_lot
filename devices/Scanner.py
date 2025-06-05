@@ -15,7 +15,6 @@ class Scanner():
     def __init__(self, URL):
         self.time_control = TimeControl()
         self.URL = URL
-        self.URL_DEVICE = ''
         # continuously try to connect to the server until successful for 60 seconds
         print('connecting to server...')
         timer1 = self.time_control.add_timer(60)
@@ -35,7 +34,7 @@ class Scanner():
             return
     
         # if successful, get the broker information and initialize the client
-        URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic = data
+        URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic, notice_interval = data
         self.client = client(client_id, broker, port, self)
         self.client.start()
         self.topic = info_topic
@@ -52,7 +51,7 @@ class Scanner():
             res = requests.post(self.URL_UPDATE, json = self.payload) 
         except Exception as e:
             print("Catalog connection failed:", e)
-        self.notice_interval = 120  # seconds 
+        self.notice_interval = notice_interval  # seconds 
         print('scanner initialized')
 
     def publish(self, message):

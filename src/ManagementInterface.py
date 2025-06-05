@@ -8,6 +8,8 @@ time_control = TimeControl()
 ConfigLoader = ConfigLoader()
 host_RESTful = ConfigLoader.RESTful.host
 port_RESTful = ConfigLoader.RESTful.port
+broker_MQTT = ConfigLoader.MQTT.broker
+port_MQTT = ConfigLoader.MQTT.port
 catalog_uri = ConfigLoader.RESTful.catalog_uri
 passage_uri = ConfigLoader.RESTful.passage_uri
 config_uri = ConfigLoader.RESTful.config_uri  
@@ -20,9 +22,13 @@ token = ConfigLoader.telegram_bot_token
 
 class ParkingConfig:
     def __init__(self):
+        self.parking_id = 'ParkingSystem'
+        self.broker = broker_MQTT
+        self.port = port_MQTT
         self.catalog_uri = catalog_uri
         self.passage_uri = passage_uri
         self.config_uri = config_uri
+        self.num_lots = 100
         self.free_stop = 60 ##seconds
         self.check_pay_interval = 60 ##seconds
         self.booking_expire_time = 300 ##seconds
@@ -33,13 +39,19 @@ class ParkingConfig:
         self.unpaired_time_limit = 300  # Check every 5 minutes
         self.listen_device_info_interval = 300  # Check every 5 minutes
         
+        self.book_start_time = 30
+        self.time_out = 300
         self.notice_interval = 120
     
     def load_config(self):
         return {"config": [
+            self.parking_id,
+            self.broker,
+            self.port,
             self.catalog_uri,
             self.passage_uri,
             self.config_uri,
+            self.num_lots,
             self.free_stop,
             self.check_pay_interval,
             self.booking_expire_time,
@@ -48,15 +60,21 @@ class ParkingConfig:
             self.payment_filter_interval,
             self.unpaired_time_limit,
             self.listen_device_info_interval,
+            self.book_start_time,
+            self.time_out,
             self.notice_interval
         ]}
        
     def show_default(self):
-        print(f"Default configurations:\n"
+        return(f"Default configurations:\n"
+              f"parking_id: {self.parking_id}, system name\n"
+              f"broker: {self.broker}, MQTT broker\n"
+              f"port: {self.port}, MQTT port\n"
               f"catalog_uri: {self.catalog_uri}\n"
               f"passage_uri: {self.passage_uri}\n"
               f"config_uri: {self.config_uri}\n"
-              f"Free_stop: {self.free_stop} seconds, within which the car will not be charged\n"
+              f"num_lots: {self.num_lots}, the number of parking lots\n"
+              f"free_stop: {self.free_stop} seconds, within which the car will not be charged\n"
               f"check_pay_interval: {self.check_pay_interval} seconds, the time limit between the fee check and finish transaction\n"
               f"booking_expire_time: {self.booking_expire_time} seconds, the time limit of no appearance after the booking time\n"
               f"hourly_rate: {self.hourly_rate} euros, the hourly rate for parking\n"
@@ -64,6 +82,8 @@ class ParkingConfig:
               f"payment_filter_interval: {self.payment_filter_interval} seconds, check if there are expired payments by interval\n"
               f"unpaired_time_limit: {self.unpaired_time_limit} seconds, the time limit for the devices (scanner/gate) to pair, disconnect more than that\n"
               f"listen_device_info_interval: {self.listen_device_info_interval} seconds, check the device status by interval\n"
+              f"book_start_time: {self.book_start_time} seconds, available booking time after the operation time"
+              f"time_out: {self.time_out} seconds, chat expire without interaction"
               f"notice_interval {self.notice_interval} seconds, the devices update their info by interval\n")
 
 
@@ -99,7 +119,7 @@ def get_response(url, action, timeout, post = None):
 while True:
     
     cmd = input(   
-        "Press 'i' to initiate or change the system configurations\n"   
+        "Press 'i' to initiate the system configurations\n"   
         "Press 's' to show the list of devices\n"
         "Press 'p' to add a new parking lot\n"
         "Press 'add' to add a new device\n"
@@ -111,74 +131,89 @@ while True:
     if cmd == 'i':
         parking_config = ParkingConfig()
         while True:
+            print(f"Here are the default configurations:\n")
             qiut = False
             while True:
                 c = input(
-                    f"Here are the default configurations:\n\n"
-                    f"{parking_config.show_default()}\n\n"
+                    f"\nType 'Enter' to continue with default configurations\n"
+                    f"{parking_config.show_default()}\n"
                     f"Type the property name to change the configurations\n"
                     f"Press 'q' to quit\n"
                 )
-                if c == "catalog_uri":
+                if c== "":
+                    break
+                elif c == 'parking_id':
+                    new_value = input("Enter the new parking system ID (default: ParkingSystem): ").strip()
+                    if new_value:
+                        parking_config.parking_id = new_value
+                elif c == 'broker':
+                    new_value = input("Enter the new MQTT broker address (default: localhost): ").strip()
+                    if new_value:
+                        parking_config.broker = new_value
+                elif c == 'port':
+                    new_value = input("Enter the new MQTT port (default: 1883): ").strip()
+                    if new_value.isdigit():
+                        parking_config.port = int(new_value)
+                elif c == "catalog_uri":
                     new_value = input("Enter the new catalog URI (default: /catalog): ").strip()
                     if new_value:
                         parking_config.catalog_uri = new_value
-                    break
                 elif c == "passage_uri":
                     new_value = input("Enter the new passage URI (default: /passage): ").strip()
                     if new_value:
                         parking_config.passage_uri = new_value
-                    break
                 elif c == "config_uri": 
                     new_value = input("Enter the new config URI (default: /config): ").strip()
                     if new_value:
                         parking_config.config_uri = new_value
-                    break
+                elif c == "num_lots":
+                    new_value = input("Enter the new number of parking lots (default: 100): ").strip()
+                    if new_value.isdigit():
+                        parking_config.num_lots = int(new_value)
                 elif c == "free_stop":
                     new_value = input("Enter the new free stop time in seconds (default: 60): ").strip()
                     if new_value.isdigit():
                         parking_config.free_stop = int(new_value)
-                    break
                 elif c == "check_pay_interval":
                     new_value = input("Enter the new check pay interval in seconds (default: 60): ").strip()
                     if new_value.isdigit():
                         parking_config.check_pay_interval = int(new_value)
-                    break
                 elif c == "booking_expire_time":
                     new_value = input("Enter the new booking expire time in seconds (default: 300): ").strip()
                     if new_value.isdigit():
                         parking_config.booking_expire_time = int(new_value)
-                    break
                 elif c == "hourly_rate":    
                     new_value = input("Enter the new hourly rate in euros (default: 1.50): ").strip()
                     if new_value.replace('.', '', 1).isdigit():
                         parking_config.hourly_rate = float(new_value)
-                    break
                 elif c == "book_filter_interval":
                     new_value = input("Enter the new book filter interval in seconds (default: 600): ").strip()
                     if new_value.isdigit():
                         parking_config.book_filter_interval = int(new_value)
-                    break
                 elif c == "payment_filter_interval":
                     new_value = input("Enter the new payment filter interval in seconds (default: 60): ").strip()
                     if new_value.isdigit():
                         parking_config.payment_filter_interval = int(new_value)
-                    break
                 elif c == "unpaired_time_limit":
                     new_value = input("Enter the new unpaired time limit in seconds (default: 300): ").strip()
                     if new_value.isdigit():
                         parking_config.unpaired_time_limit = int(new_value)
-                    break
                 elif c == "listen_device_info_interval":
                     new_value = input("Enter the new listen device info interval in seconds (default: 300): ").strip()
                     if new_value.isdigit():
                         parking_config.listen_device_info_interval = int(new_value)
-                    break
+                elif c == "book_start_time":
+                    new_value = input("Enter the new book start time in seconds (default: 30): ").strip()
+                    if new_value.isdigit():
+                        parking_config.book_start_time = int(new_value)
+                elif c == "time_out":
+                    new_value = input("Enter the new time out in seconds (default: 300): ").strip()
+                    if new_value.isdigit():
+                        parking_config.time_out = int(new_value)
                 elif c == "notice_interval":
                     new_value = input("Enter the new notice interval in seconds (default: 120): ").strip()
                     if new_value.isdigit():
                         parking_config.notice_interval = int(new_value)
-                    break
                 elif c == "q":
                     qiut = True
                     break
@@ -188,7 +223,7 @@ while True:
                 break
             else:
                 # Wait for the response from the server, try up to 10 seconds
-                timeout, res = get_response(URL_CONFIG, 'POST', 10, post = parking_config.load_config())
+                timeout, res = get_response(URL, 'POST', 10, post = parking_config.load_config())
                 if timeout:
                     print("No response from the server. Please check the server status.\n")
                     continue
@@ -351,16 +386,16 @@ while True:
             parking_lot_id = input("Enter the ID of the parking lot to add the passage (format: lot + Number), or 'q' to quit: ").lower()
             if parking_lot_id == 'q':
                 break
-            scanner_id = input("Enter the ID of an added scanner (format: scanner + Number), or 'q' to quit: ").lower()
+            scanner_id = input(f"Enter the ID of an added scanner (format: {in_out}_scanner + Number), or 'q' to quit: ").lower()
             if scanner_id == 'q':
                 break
-            gate_id = input("Enter the ID of an added gate (format: gate + Number), or 'q' to quit: ").lower()
+            gate_id = input(f"Enter the ID of an added gate (format: {in_out}_gate + Number), or 'q' to quit: ").lower()
             if gate_id == 'q':
                 break
             passage_id = input(f"Enter the ID of the new {in_out} (format: {in_out} + Number), or 'q' to quit: ").lower()
             if passage_id == 'q':
                 break
-            if re.match(r'^lot\d+$', parking_lot_id) and re.match(r'^scanner\d+$', scanner_id) and re.match(r'^gate\d+$', gate_id) and re.match(fr'^{in_out}\d+$', passage_id):
+            if re.match(r'^lot\d+$', parking_lot_id) and re.match(fr'^{in_out}_scanner\d+$', scanner_id) and re.match(fr'^{in_out}_gate\d+$', gate_id) and re.match(fr'^{in_out}\d+$', passage_id):
                 # wait for the response from the server, try up to 10 seconds
                 timeout, res = get_response(URL_CATALOG, 'POST', 10, post = [c, scanner_id, gate_id, passage_id, parking_lot_id])
                 if timeout:
@@ -383,7 +418,7 @@ while True:
             passage_id = input("Enter the ID of the passage (format: exit/entrance + Number), or 'q' to quit: ").lower()
             if passage_id == 'q':
                 break
-            if re.match(r'^lot\d+$', parking_lot_id) and re.match(r'^(exit|entrance)\d+$', passage_id):
+            if re.match(r'^lot\d+$', parking_lot_id) and re.match(fr'^({in_out}_exit|{in_out}_entrance)\d+$', passage_id):
                 
                 # wait for the response from the server, try up to 10 seconds
                 timeout, res = get_response(URL_CATALOG, 'POST', 10, post = [c, passage_id, parking_lot_id])

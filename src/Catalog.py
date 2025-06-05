@@ -340,6 +340,7 @@ class Catalog:
         # Check if the is already a bot
         if self.bot:
             msg1 = [False, f"Telegram bot already exists."]
+            msg2 = [False, "Please remove the existing bot first."]
         else:
             # Create a new bot
             info_topic = f"parking/{id}/info"
@@ -348,7 +349,7 @@ class Catalog:
             self.bot = Bot(id, token, info_topic, command_topic)
             msg1 =  [True, f"New bot {id} added."]
             # Send the bot information to the device
-            msg2 = [token, URL, self.parking_config.broker, self.parking_config.port, id, info_topic, command_topic, self.parking_config.book_start_time, self.parking_config.time_out, self.parking_config.notice_interval]
+            msg2 = [True, [token, URL, self.parking_config.broker, self.parking_config.port, id, info_topic, command_topic, self.parking_config.book_start_time, self.parking_config.time_out, self.parking_config.notice_interval]]
         return msg1 , msg2
     
     def load_device(self):

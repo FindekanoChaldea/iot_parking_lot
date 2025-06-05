@@ -218,7 +218,6 @@ class Parking():
         print(f"Published message: {message} to topic: {topic}") 
         
     def notify(self, topic, payload):
-        def notify_thread():
             try:
                 data = json.loads(payload)
                 if 'scanner' in topic.split('/')[-2] and topic.split('/')[-3] == 'entrance':
@@ -300,14 +299,13 @@ class Parking():
                         self.client.publish(self.bot.command_topic, response)
             except Exception as e:
                 print("Error in notify_thread:", e)
-        threading.Thread(target=notify_thread).start()
                 
     def run(self):
-        def keep_alive():
-            start = time.time()
-            while True:
-                time.sleep(2)
-                now = time.time()
+        start = time.time()
+        while True:
+            time.sleep(2)
+            now = time.time()
+            if self.parkings:
                 for car in self.parkings.values():
                     if car.status == CarStatus.CHECKED:
                         if (now - car.payment.time).seconds > self.check_pay_interval:
@@ -317,7 +315,6 @@ class Parking():
                         if booking.is_expired(self.booking_expire_time):
                             del self.bookings[booking.plate_license]
                     start = now
-        threading.Thread(target=keep_alive).start()  
        
     def listening_catalog(self):
         def listening_thread():

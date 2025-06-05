@@ -109,10 +109,14 @@ class ParkingBot:
                 pass
             time.sleep(1)
         # if successful, get the broker information and initialize the client
-        token, URL_UPDATE, broker, port, client_id, info_topic, command_topic, book_start_time, time_out, notice_interval = data
+        if data[0]:
+            token, URL_UPDATE, broker, port, client_id, info_topic, command_topic, book_start_time, time_out, notice_interval = data[1]
+        else:
+            print('Failed to connect to the server, exiting...')
+            return
         self.client = client(client_id, broker, port, self)
         self.client.start()
-        self.topic = info_topic
+        self.info_topic = info_topic
         self.client.subscribe(command_topic)
 
         self.URL_UPDATE = URL_UPDATE
@@ -140,9 +144,6 @@ class ParkingBot:
         self.time_out = time_out  # Timeout for each inactive chat session in seconds
         self.notice_interval = notice_interval # seconds
         print('bot initialized')
-        
-    def __init__(self, token, client_id, broker, port, info_topic, command_topic):
-        pass
     
     def publish(self, message):
         self.client.publish(self.info_topic, message)

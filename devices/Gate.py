@@ -83,15 +83,13 @@ class Gate():
                 Exception ("Unknown command received")
                 
     def run(self):
-        def keep_alive():
-            while True:
-                time.sleep(self.notice_interval)
-                try:
-                    res = requests.post(self.URL_UPDATE, json = self.payload) 
-                    print("[Sensor] Data sent:", res.text)
-                except Exception as e:
-                    print("[Sensor] POST failed:", e)      
-        threading.Thread(target=keep_alive).start()
+        while True:
+            time.sleep(self.notice_interval)
+            try:
+                res = requests.post(self.URL_UPDATE, json = self.payload) 
+                print("[Sensor] Data sent:", res.text)
+            except Exception as e:
+                print("[Sensor] POST failed:", e)      
              
     
         

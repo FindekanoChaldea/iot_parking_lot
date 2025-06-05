@@ -42,7 +42,6 @@ class Gate():
         self.topic = info_topic
         self.client.subscribe(command_topic)
         self.status = Status.CLOSE
-        self.lock = Lock()
         self.URL_UPDATE = URL_UPDATE
         self.payload = {
             "client_id": client_id,
@@ -67,20 +66,20 @@ class Gate():
         print("Gate is closing...")
     
     def notify(self, topic, payload): 
-        with self.lock:
-            payload = json.loads(payload)
-            if payload == Status.OPEN:
-                self.status = Status.OPEN
-                self.open_close()  # Simulate gate open time and assume the car went through
-                self.status = Status.CLOSE
-                self.publish(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            elif payload == Status.CLOSE:
-                if topic.split('/')[-3] == 'exit':
-                    print(f"\nstayed too long after payment/entering, need to pay\n")
-                elif topic.split('/')[-3] == 'entrance':
-                    print("\nno more parking lots available\n")
-            else :
-                Exception ("Unknown command received")
+        print(f"[Gate] Received command on topic: {topic} with payload: {payload}")
+        payload = json.loads(payload)
+        if payload == Status.OPEN:
+            self.status = Status.OPEN
+            self.open_close()  # Simulate gate open time and assume the car went through
+            self.status = Status.CLOSE
+            self.publish(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        elif payload == Status.CLOSE:
+            if topic.split('/')[-3] == 'exit':
+                print(f"\nstayed too long after payment/entering, need to pay\n")
+            elif topic.split('/')[-3] == 'entrance':
+                print("\nno more parking lots available\n")
+        else :
+            Exception ("Unknown command received")
                 
     def run(self):
         while True:

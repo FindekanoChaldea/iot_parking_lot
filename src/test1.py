@@ -8,14 +8,9 @@ class TestClient:
         self.client = client(client_id, broker, port, self)
         self.client.start()
 
-    def notify(self, topic, payload):
-        def notify_thread():
-            try:
-                data = json.loads(payload)
-                print(f"Received message on topic {topic}: {data}")
-            except json.JSONDecodeError:
-                print(f"Error")
-        threading.Thread(target=notify_thread).start()
+    def notify(self, topic, payload): 
+        payload = json.loads(payload)
+        print(f"[Gate] Received command on topic: {topic} with payload: {payload}")
             
     def susbscribe(self, topic):
         self.client.subscribe(topic)

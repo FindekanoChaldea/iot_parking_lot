@@ -8,7 +8,6 @@ host = config_loader.RESTful.host
 port = config_loader.RESTful.port
 URL = f"http://{host}:{port}"
 entranceScanner1 = Scanner(URL)
-entranceScanner1.run()
 
 while True:
     c = input("Press Enter to scan a plate or type 'q' to quit: \n")

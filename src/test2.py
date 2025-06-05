@@ -7,7 +7,7 @@ class TestClient:
     def __init__(self, client_id, broker, port):
         self.client = client(client_id, broker, port)
         self.client.start()
-        self.topic = "parking/lot1/entrance/entrance_scanner1/info"
+        self.topic = "parking/lot1/entrance/entrance_gate1/command"
         self.client.subscribe(self.topic)
             
     def susbscribe(self, topic):

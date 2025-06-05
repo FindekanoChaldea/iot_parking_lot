@@ -418,7 +418,7 @@ while True:
             passage_id = input("Enter the ID of the passage (format: exit/entrance + Number), or 'q' to quit: ").lower()
             if passage_id == 'q':
                 break
-            if re.match(r'^lot\d+$', parking_lot_id) and re.match(fr'^({in_out}_exit|{in_out}_entrance)\d+$', passage_id):
+            if re.match(r'^lot\d+$', parking_lot_id) and re.match(r'^(exit|entrance)\d+$', passage_id):
                 
                 # wait for the response from the server, try up to 10 seconds
                 timeout, res = get_response(URL_CATALOG, 'POST', 10, post = [c, passage_id, parking_lot_id])

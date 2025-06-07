@@ -17,7 +17,7 @@ class Device:
         self.command_topic = command_topic
         self.URL = URL
         self.paired = False  # Indicates if the device is paired within a passage
-    
+
     def to_dict(self):
         return {
             "client_id": self.id,
@@ -31,7 +31,13 @@ class Passage:
         self.id = id
         self.parking_lot_id = parking_lot_id
         self.scanner = scanner
+        self.scanner.paired = True
         self.gate = gate
+        self.gate.paired = True
+        
+    def unpair(self):
+        self.scanner.paired = False
+        self.gate.paired = False
         
     def save(self, path):
         if os.path.exists(path):
@@ -53,7 +59,7 @@ class Passage:
             "gate": self.gate.to_dict(),
         }
         # Write back to file
-        with open(self.PATH, "w") as f:
+        with open(path, "w") as f:
             json.dump(data, f, indent=2)
     def info(self):
         return [self.parking_lot_id, self.id,
@@ -82,7 +88,8 @@ class Bot:
         self.token = token
         self.info_topic = info_topic
         self.command_topic = command_topic
-        
+    def info(self):
+        return [self.id, self.token, self.info_topic, self.command_topic]  
     def to_dict(self):
         return {
             "id": self.id,
@@ -123,15 +130,14 @@ class Catalog:
     
     class ParkingConfig:
         def __init__(self, catalog, list):
-            (
+            [
             # parking properties
             self.parking_id,
             self.broker,
             self.port,
             self.catalog_uri,
             self.passage_uri,
-            self.config_uri,
-            self.num_lots,
+            self.lot_uri,
             self.free_stop,
             self.check_pay_interval,
             self.booking_expire_time,
@@ -139,17 +145,16 @@ class Catalog:
             self.book_filter_interval,
             self.payment_filter_interval,
             # catalog
-            self.unpaired_time_limit,
-            self.listen_device_info_interval,
+            self.device_inactive_limit,
             
             #devices
             self.book_start_time,
             self.time_out,
             self.notice_interval
-            ) =list
+            ] =list
             self.URL_CATALOG = f"{catalog.URL}{self.catalog_uri}"
             self.URL_PASSAGE = f"{catalog.URL}{self.passage_uri}"
-            self.URL_CONFIG = f"{catalog.URL}{self.config_uri}"
+            self.URL_LOT = f"{catalog.URL}{self.lot_uri}"
             
         def parking_properties(self):
             return [
@@ -158,15 +163,14 @@ class Catalog:
                 self.port,
                 self.URL_CATALOG,
                 self.URL_PASSAGE,
-                self.URL_CONFIG,
+                self.URL_LOT,
                 
-                self.num_lots,
                 self.free_stop,
                 self.check_pay_interval,        
                 self.booking_expire_time,
                 self.hourly_rate,
                 self.book_filter_interval,
-                self.payment_filter_interval
+                self.payment_filter_interval,
             ]
     exposed = True 
     def __init__(self, URL, path):
@@ -183,9 +187,9 @@ class Catalog:
         # URLs
         self.URL = URL
 
+        self.parking_lots = {}
         self.devices = {}
         self.passages = {}
-        self.toll_machines = {}
         self.bot = None
         
         
@@ -193,7 +197,6 @@ class Catalog:
         try:
             self.parking_config = self.ParkingConfig(self,list)
             self.listen_devices()
-            self.check_devices()
             return [True, "configuration loaded"]
         except Exception as e:
             return[False, f"Failed to load configuration: {e}"]
@@ -221,16 +224,22 @@ class Catalog:
                 time.sleep(0.5)
         return timer.timeout, data
 
-    def add_parking_lot(self, id):
-        msg = []
-        if id in self.devices.keys():
-            msg = [False, f"Parking lot {id} already exists."]
+    def add_parking_lot(self, id, num):
+        msg1 = []
+        if id in self.parking_lots.keys():
+            msg1 = [False, f"Parking lot {id} updated."]
         else:
-            msg = [True, f"Parking lot {id} added successfully."]
-            self.devices[id] = {}
-            self.passages[id] = {}
+            msg1 = [True, f"Parking lot {id} added successfully."]
+        self.parking_lots[id] = num
+        self.devices[id] = {}
+        self.passages[id] = {}
+        msg2 = [True, [id, num]]
+        timeout, _ = self.get_response(self.parking_config.URL_LOT, 'POST', 5, msg2)
+        if timeout:
+            return [False, f"Failed to connect to the ControlCenter..."]
+        # Save the parking lot to the file
         print(f"Parking lot {id} added successfully.")
-        return msg
+        return msg1
         
     class ConnectingDevice:
         class Type:
@@ -278,6 +287,23 @@ class Catalog:
             print(f"New {in_out} {type} {id} added to parking lot {parking_lot_id}.")
         return msg1, msg2
 
+    def delete_device(self, id, parking_lot_id):
+        msg1 = []
+        # Check if the parking lot exists
+        if parking_lot_id not in self.devices.keys():
+            msg1 = [False, f"Parking lot {parking_lot_id} does not exist"]
+        # Check if the device exists
+        elif id not in self.devices[parking_lot_id].keys():
+            msg1 = [False, f"Device {id} does not exist in parking lot {parking_lot_id}."]
+        # Delete the device from the catalog
+        elif self.devices[parking_lot_id][id].paired:
+            msg1 = [False, f"Device {id} is paired with a passage in parking lot {parking_lot_id}, please unpair it first."]
+        else:
+            del self.devices[parking_lot_id][id]
+            msg1 = [True, f"Device {id} deleted successfully from parking lot {parking_lot_id}."]
+            print(f"Device {id} deleted successfully from parking lot {parking_lot_id}.")
+        return msg1
+
     def pair(self, scanner_id, gate_id, passage_id, parking_lot_id):
         # Check if the parking lot exists
         msg1 = []
@@ -304,34 +330,30 @@ class Catalog:
             if timeout:
                 return[False, f"Failed to connect to the ControlCenter..."]
             print(f"New passage {passage_id} created with scanner {scanner_id} and gate {gate_id} in parking lot {parking_lot_id}.")
-            # passage.save(self.PATH)
-            scanner.paired = True
-            gate.paired = True
+            passage.save(self.PATH)
         return msg1
     
     def unpair(self, passage_id, parking_lot_id):
         msg1 = []
         # Check if the parking lot exists
-        if parking_lot_id not in self.passages:
+        if parking_lot_id not in self.passages.keys():
             msg1 = [False, f"Parking lot {parking_lot_id} does not exist"]
         # Check if the passage exists
-        if passage_id not in self.passages[parking_lot_id]:
+        if passage_id not in self.passages[parking_lot_id].keys():
             msg1 = [False, f"Passage {passage_id} does not exist in parking lot {parking_lot_id}."]
         # Unpair the scanner and gate from the passage
         else:
             passage = self.passages[parking_lot_id][passage_id]
-            passage.scanner.paired = False
-            passage.gate.paired = False
+            passage.unpair()
+            passage.delete(self.PATH)
             del self.passages[parking_lot_id][passage_id]
-            passage.save(self.PATH)
             msg1 = [True, f"Devices for passage {passage_id} unpaired successfully from parking lot {parking_lot_id}, you can shot down the devices."]
             msg2 = [False, passage.info()]
             timeout, _ = self.get_response(self.parking_config.URL_PASSAGE, 'POST', 5, msg2)
             if timeout:
                 print(f"Failed to connect to the ControlCenter.")
-                return
+                return[False, f"Failed to connect to the ControlCenter..."]
             print(f"Devices for passage {passage_id} unpaired successfully from parking lot {parking_lot_id}, you can shot down the devices.")
-            passage.delete(self.PATH)
         return msg1
     
     def connect_bot(self, id, token):
@@ -347,10 +369,42 @@ class Catalog:
             command_topic = f"parking/{id}/command"
             URL = f"{self.URL}/{id}"
             self.bot = Bot(id, token, info_topic, command_topic)
-            msg1 =  [True, f"New bot {id} added."]
-            # Send the bot information to the device
-            msg2 = [True, [token, URL, self.parking_config.broker, self.parking_config.port, id, info_topic, command_topic, self.parking_config.book_start_time, self.parking_config.time_out, self.parking_config.notice_interval]]
+            if self.activate_bot():
+                self.bot.save(self.PATH)
+                msg1 =  [True, f"New bot {id} added."]
+                # Send the bot information to the device
+                msg2 = [True, [token, URL, self.parking_config.broker, self.parking_config.port, id, info_topic, command_topic, self.parking_config.book_start_time, self.parking_config.time_out, self.parking_config.notice_interval]]
+            else:
+                msg1 = [False, f"Failed to connect the Control Center."]
+                msg2 = [False, "Please try again."]
         return msg1 , msg2
+    
+    def delete_bot(self):
+        msg1 = []
+        # Check if the bot exists
+        if not self.bot:
+            msg1 = [False, f"Telegram bot does not exist."]
+        else:
+            # Delete the bot from the catalog
+            bot = self.bot
+            self.bot.delete(self.PATH)
+            self.bot = None
+            msg1 = [True, f"Telegram bot deleted successfully."]
+            msg2 = [False, bot.info()]
+            timeout, _ = self.get_response(f"{self.URL}/addbot", 'POST', 5, msg2)
+            if timeout:
+                print(f"Failed to connect to the ControlCenter.")
+                return [False, f"Failed to connect to the ControlCenter."]
+            print(f"Telegram bot deleted successfully.")
+        return msg1
+    
+    def activate_bot(self):
+        msg = [True, [self.bot.id, self.bot.info_topic, self.bot.command_topic]]
+        timeout, _ = self.get_response(F"{self.URL}/addbot", 'POST', 5, msg)
+        if timeout:
+            return False
+        else:
+            return True
     
     def load_device(self):
         data = self.devices
@@ -361,7 +415,7 @@ class Catalog:
             # Format the data for display
             show = ''
             for lot_id, devices in data.items():
-                show += f"Parking Lot ID: {lot_id}\n"
+                show += f"Parking Lot ID: {lot_id} {self.parking_lots[lot_id]} spots\n"
                 for device_id, device in devices.items():
                     show += f"  Device ID: {device_id}    Info_topic: {device.info_topic}    Command_topic: {device.command_topic}\n"
             msg = [True, show]
@@ -375,7 +429,7 @@ class Catalog:
         else:
             show = ''
             for lot_id, passages in data.items():
-                show += f"Parking Lot ID: {lot_id}\n"
+                show += f"Parking Lot ID: {lot_id} {self.parking_lots[lot_id]}spots\n"
                 for passage_id, passage in passages.items():
                     show += f"    Passage ID: {passage_id}\n"
                     show += f"        Device ID: {passage.scanner.id}    Info_topic: {passage.scanner.info_topic}    Command_topic: {passage.scanner.command_topic}\n"
@@ -421,33 +475,38 @@ class Catalog:
                                             )
                                     else:
                                         now = time.time()
-                                        if now - start > self.parking_config.listen_device_info_interval:  # If the device has not responded for within given minutes
-                                            warning += (
-                                                f"Device {device.id} in {device.parking_lot_id} is not responding for {math.ceil(self.parking_config.listen_device_info_interval/60)} miniutes.\n"
-                                                f"Please check the device.\n"
-                                            )
-                                            issue = True  
-                        print(status + warning)
-                        if issue:
-                            break    
+                                        if now - start > self.parking_config.device_inactive_limit:  # If the device has not responded for within given minutes
+                                            if device.paired:
+                                                self.unpair(passage.id, device.parking_lot_id)
+                                                warning += (
+                                                    f"Device {device.id} in {device.parking_lot_id} is not responding for {math.ceil(self.parking_config.device_inactive_limit/60)} miniutes.\n"
+                                                    f"Device is deleted from Catalog.\n"
+                                                )
+                                            else: 
+                                                self.delete_device(device.id, device.parking_lot_id)
+                                                warning += (
+                                                    f"Device {device.id} in {device.parking_lot_id} is not responding for {math.ceil(self.parking_config.device_inactive_limit/60)} miniutes.\n"
+                                                    f"All devices from the passage {passage.id} are deleted from Catalog.\n"
+                                                )
+                        print(status + warning)  
                     except Exception:
                         pass   
-                    time.sleep(30)
+                    time.sleep(10)
         threading.Thread(target=listening_thread).start()
    
     # Check devices every 5 minutes to see if they are still paired
     # If a device is not paired, remove it from the catalog
     # This is a background thread that runs indefinitely     
-    def check_devices(self):
-        def check_thread():
-            while True:
-                time.sleep(self.parking_config.unpaired_time_limit)  # Check every 5 minutes
-                for lot in self.devices.values():
-                    for device in lot.values():
-                        if not device.paired:
-                            print(f"Device {device.id} in parking lot {device.parking_lot_id} is not paired for long time, removing from catalog, initiate it again if needed.")
-                            self.devices[device.parking_lot_id].pop(device.id, None)
-        threading.Thread(target=check_thread).start()
+    # def check_devices(self):
+    #     def check_thread():
+    #         while True:
+    #             time.sleep(self.parking_config.unpaired_time_limit)  # Check every 5 minutes
+    #             for lot in self.devices.values():
+    #                 for device in lot.values():
+    #                     if not device.paired:
+    #                         print(f"Device {device.id} in parking lot {device.parking_lot_id} is not paired for long time, removing from catalog, initiate it again if needed.")
+    #                         self.devices[device.parking_lot_id].pop(device.id, None)
+    #     threading.Thread(target=check_thread).start()
 
     @cherrypy.tools.json_out()
     def GET(self, *uri, **params):
@@ -520,8 +579,8 @@ class Catalog:
                 elif data[0] == 'passage':
                     return self.load_passage()
                 elif data[0] == 'parking_lot':
-                    parking_lot_id = data[1]
-                    return self.add_parking_lot(parking_lot_id)
+                    _, parking_lot_id, num = data
+                    return self.add_parking_lot(parking_lot_id, num)
                 elif data[0] == 'pair':
                     _, scanner_id, gate_id, passage_id, parking_lot_id = data
                     return self.pair(scanner_id, gate_id, passage_id, parking_lot_id) 
@@ -536,12 +595,17 @@ class Catalog:
                         return [False, "No device is initiating, please intiate the device first."]
                     else: self.connecting_device.connect_device(id, parking_lot_id, in_out, type)
                     return self.connecting_device.interface_msg
+                elif data[0] == 'delete_device':
+                    _, id, parking_lot_id = data
+                    return self.delete_device(id, parking_lot_id)
                 elif data[0] == 'bot':
                     _, id, token = data
                     if not self.connecting_device:
                         return [False,"No device is initiating, please intiate the device first."]
                     self.connecting_device.connect_bot(id, token)
                     return self.connecting_device.interface_msg
+                elif data[0] == 'delete_bot':
+                    return self.delete_bot()
                 else:
                     cherrypy.response.status = 400
                     return "Invalid request"   

@@ -10,11 +10,13 @@ port = config_loader.RESTful.port
 URL = f"http://{host}:{port}"
 entranceScanner1 = Scanner(URL)
 threading.Thread(target=entranceScanner1.run).start()
+time.sleep(2)  # Allow some time for the scanner to initialize
 while True:
+    time.sleep(2)
     c = input("Press Enter to scan a plate or type 'q' to quit: \n")
     if c.lower() == 'q':
         break
+    c = c.strip().upper()  # Ensure no leading/trailing spaces
     entranceScanner1.scan_plate(c)
-    time.sleep(1)  # Simulate a delay between scans
     
         

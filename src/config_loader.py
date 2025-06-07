@@ -30,7 +30,7 @@ class ConfigLoader:
             self.port = config_loader.config['RESTful']['port']
             self.catalog_uri = config_loader.config['RESTful']['catalog_uri']
             self.passage_uri = config_loader.config['RESTful']['passage_uri']
-            self.config_uri = config_loader.config['RESTful']['config_uri']
+            self.lot_uri = config_loader.config['RESTful']['lot_uri']
             
     class Bot:
         def __init__(self, config_loader):

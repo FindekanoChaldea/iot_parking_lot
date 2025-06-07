@@ -1,5 +1,6 @@
 from Scanner import Scanner
-import  time
+import time
+import threading
 from src.config_loader import ConfigLoader
 
 
@@ -8,12 +9,13 @@ host = config_loader.RESTful.host
 port = config_loader.RESTful.port
 URL = f"http://{host}:{port}"
 exitScanner2 = Scanner(URL)
-exitScanner2.run()
-
+threading.Thread(target=exitScanner2.run).start()
+time.sleep(2)  # Allow some time for the scanner to initialize
 while True:
+    time.sleep(2)
     c = input("Press Enter to scan a plate or type 'q' to quit: \n")
     if c.lower() == 'q':
         break
+    c = c.strip().upper()  # Ensure no leading/trailing spaces
     exitScanner2.scan_plate(c)
-    time.sleep(1)  # Simulate a delay between scans
         

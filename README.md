@@ -3,80 +3,50 @@
 This project is a microservice-based IoT system for managing smart parking lots. It uses MQTT and REST to connect and control sensors, gates, timers, and user services such as booking, payment, and real-time monitoring.
 
 ## 🚗 Project Features
-- Real-time parking space detection via sensors
-- Entrance/Exit gate management with Temporary Identification Code (TIC)
-- REST API for booking and payments
+
+- REST API for Catalog
 - MQTT-based messaging for status updates
-- Telegram Bot for user interaction
-- Google Maps + ThingSpeak integration for visualization
+- Telegram Bot for user interaction of reserve/pay
 
 ## 🔧 Technologies Used
 - Python 3
-- Flask / FastAPI (REST APIs)
+- HTTP
 - MQTT (Paho-MQTT)
 - JSON for configuration
-- ThingSpeak
-- Google Maps API
 - Telegram Bot API
 
 ## 🗂️ Repository Structure
 ```bash
 smart-parking-lot/
 ├── README.md
-├── LICENSE
-├── .gitignore
-├── requirements.txt
 │
 ├── config/              # JSON configuration files
 │   ├── devices.json
-│   ├── settings.json
-│   └── users.json
+│   └── settings.json
 │
 ├── devices/             # Sensor and gate simulators
-│   ├── onspot_sensor.py
-│   ├── entrance_device.py
-│   └── exit_device.py
+│   ├── entrance_scanner.py
+│   ├── entrance_gate.py
+│   └── exit_scanner.py
+│   └── exit_gate.py
 │
-├── services/            # REST/MQTT backend microservices
-│   ├── parking_control/
-│   │   └── app.py
-│   ├── payment/
-│   │   └── pay_api.py
-│   ├── timer_control/
-│   │   └── timer.py
-│   └── telegram_bot/
-│       └── bot.py
-│
-├── integration/         # Broker config and system wiring
-│   └── mqtt_broker_config/
-│       └── broker.py
-│
-├── frontend/            # UI, map, ThingSpeak, display logic
-│   ├── display_ui.html
-│   ├── map_embed.html
-│   └── thingspeak_integration.js
-│
-├── docs/                # API specs, diagrams
-│   ├── architecture.md
-│   ├── api_reference.md
-│   └── use_case.md
-│
-├── tests/               # Unit & integration tests
-│   └── test_devices.py
+├── src/            # REST/MQTT backend microservices
+│   ├── ControlCenter.py          ## central logic/controller of system
+│   ├── ManagementInterface.py	  ## Interface for the Parking device management
+│   ├── Catalog.py				  ## Catalog
+│   └── telegram_bot.py			  ## Telegram bot
 ```
 
 ## 📡 Microservices Overview
 | Service | Description |
 |--------|-------------|
-| `parking_control` | Central service registry (REST + JSON config) |
-| `entrance_device` | Issues TIC and assigns parking spot (MQTT) |
-| `onspot_sensor` | Publishes parking spot status (MQTT) |
-| `exit_device` | Validates payment and triggers gate open |
-| `timer_control` | Monitors duration of parking |
-| `payment_service` | Handles payment confirmation via REST |
-| `telegram_bot` | Interface for booking and alerts |
-| `display_screen` | Shows availability using REST |
-| `thingSpeak_adapter` | Uploads data to ThingSpeak |
+| `ControlCenter` | Central service registry (REST + MQTT) |
+| `entrance_scanner` | Scanner the palte_license and send to ControlCenter (MQTT) |
+| `entrance_gate` | Open the gate and send timestamp to ControlCenter (MQTT) |
+| `exit_scanner` | Scanner the palte_license and send to ControlCenter (MQTT) |
+| `exit_gate` | Open the gate and send timestamp to ControlCenter (MQTT) |
+| `Catalog` | Central device registry (REST) |
+| `telegram_bot` | Interface for booking and payment |
 
 ## 🛠️ Getting Started
 
@@ -84,24 +54,6 @@ smart-parking-lot/
    ```bash
    git clone https://github.com/FindekanoChaldea/iot_parking_lot.git
    cd smart-parking-lot
-
-2. Install dependencies:
-	```bash
-	pip install -r requirements.txt
-
-3. Start the MQTT broker (e.g., Mosquitto) and REST services:
-	```bash
-	python services/parking_control/app.py
-
-4.	Launch devices and test interactions:
-	```bash
-	python devices/onspot_sensor.py
-
-5.	Access frontend or test API endpoints with Postman or browser.
-
-## 📄 License
-
-	MIT License
 
 ## 👥 Team Members
 	•	Peichun Jiang (s330592)

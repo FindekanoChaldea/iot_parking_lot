@@ -37,7 +37,8 @@ class Scanner():
         URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic, notice_interval = data
         self.client = client(client_id, broker, port, self)
         self.client.start()
-        time.sleep(10)
+        print(f'scanner {client_id} initialized')
+        time.sleep(1)
         self.topic = info_topic
         self.client.subscribe(command_topic)
         self.status = Status.STANDBY
@@ -53,11 +54,9 @@ class Scanner():
         except Exception as e:
             print("Catalog connection failed:", e)
         self.notice_interval = notice_interval  # seconds 
-        print('scanner initialized')
 
     def publish(self, message):
         self.client.publish(self.topic, message)
-        print(f"Published message: {message} to topic: {self.topic}\n")
     
     def scan_plate(self, plate_license):
         if self.status == Status.SCANNED:
@@ -76,7 +75,7 @@ class Scanner():
             time.sleep(self.notice_interval)
             try:
                 res = requests.post(self.URL_UPDATE, json = self.payload) 
-                print("[Sensor] Data sent:", res.text)
+                print("[Scanner] Status updated")
             except Exception as e:
-                print("[Sensor] POST failed:", e)      
+                print("[Scanner] Status POST failed:", e)    
         

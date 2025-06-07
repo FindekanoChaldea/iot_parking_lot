@@ -9,12 +9,10 @@ import requests
 import json
 import threading
 from TimeControl import TimeControl
-from zoneinfo import ZoneInfo  
-
-italy_tz = ZoneInfo("Europe/Rome")  # Define the Italy timezone
 
 class Status:
         START = 'start'
+        BOOK_LOT = 'book_lot'
         BOOK_PLATE = 'book_plate'
         BOOK_TIME = 'book_time'
         AVAILABILITY = 'availability'
@@ -44,34 +42,38 @@ class Chat:
     def get_expecting_time(self):
         return self.expecting_time.strftime("%Y-%m-%d %H:%M:%S") if self.expecting_time else None
     
+    def add_lot(self, parking_lot_id):
+        self.parking_lot_id = parking_lot_id
+    
     def to_dict(self):
         if self.status == Status.AVAILABILITY:
             return {
-                'action': 'availability',
+                'action': '/availability',
                 'chat_id': self.chat_id
             }
         elif self.status == Status.BOOK_TIME:
             return {
-                'action': 'book',
+                'action': '/book',
                 'chat_id': self.chat_id,
+                'parking_lot_id': self.parking_lot_id,
                 'plate_license': self.plate_license,
                 'expecting_time': self.expecting_time.strftime("%Y-%m-%d %H:%M:%S")
             }
         elif self.status == Status.CANCEL:
             return {
-                'action': 'cancel',
+                'action': '/cancel',
                 'chat_id': self.chat_id,
                 'plate_license': self.plate_license,
             }
         elif self.status == Status.PAY_CHECK:
             return {
-                'action': 'pay_check',
+                'action': '/pay_check',
                 'chat_id': self.chat_id,
                 'plate_license': self.plate_license,
             }
         elif self.status == Status.PAY_PAY:
             return {
-                'action': 'pay_pay',
+                'action': '/pay_pay',
                 'chat_id': self.chat_id,
                 'plate_license': self.plate_license,
             }
@@ -109,7 +111,7 @@ class ParkingBot:
                 pass
             time.sleep(1)
         # if successful, get the broker information and initialize the client
-        if data[0]:
+        if data and data[0]:
             token, URL_UPDATE, broker, port, client_id, info_topic, command_topic, book_start_time, time_out, notice_interval = data[1]
         else:
             print('Failed to connect to the server, exiting...')
@@ -147,7 +149,6 @@ class ParkingBot:
     
     def publish(self, message):
         self.client.publish(self.info_topic, message)
-        print(f'Published message: "{message}" to topic: "{self.info_topic}"')
     
     def notify(self, topic, payload):
         data = json.loads(payload)
@@ -180,13 +181,13 @@ class ParkingBot:
             self.bot.sendMessage(chat_id, "Welcome to Polito Parking Lot! Send /start to start.")
         elif text.lower() == '/start':
             self.chats[chat_id] = Chat(chat_id)
-            self.bot.sendMessage(chat_id, "Send /availability to check free spots, /book to reserve a spot, /cancel to cancel reservation, /pay to pay your parking fee")
+            self.bot.sendMessage(chat_id, "Send /availability to check free spots for reservation, /cancel to cancel reservation, /pay to pay your parking fee")
         elif text.lower() == '/availability':
             self.chats[chat_id].set_status(Status.AVAILABILITY)
             self.publish(self.chats[chat_id].to_dict())
         elif text.lower() == '/book':
-            self.chats[chat_id].set_status(Status.BOOK_PLATE)
-            self.bot.sendMessage(chat_id, "Please enter your plate number:")
+            self.chats[chat_id].set_status(Status.BOOK_LOT)
+            self.bot.sendMessage(chat_id, "Please enter the lot id:")
         elif text.lower() == '/cancel':           
             self.chats[chat_id].set_status(Status.CANCEL)
             self.bot.sendMessage(chat_id, "Please enter your plate number to cancel:")
@@ -194,7 +195,9 @@ class ParkingBot:
             self.chats[chat_id].set_status(Status.PAY_CHECK)
             self.bot.sendMessage(chat_id, "Please enter your plate number to pay:")
         elif chat_id in self.chats.keys():
-            if self.chats[chat_id].status == Status.BOOK_PLATE:
+            if self.chats[chat_id].status == Status.BOOK_LOT:
+                self.handle_booking(chat_id, text)
+            elif self.chats[chat_id].status == Status.BOOK_PLATE:
                 self.handle_booking(chat_id, text)
             elif self.chats[chat_id].status == Status.PAY_CHECK:
                 self.handle_pay(chat_id, text)
@@ -203,7 +206,7 @@ class ParkingBot:
             elif self.chats[chat_id].status == Status.CANCEL:
                 self.handle_cancel(chat_id, text)
             else:
-                self.bot.sendMessage(chat_id, "Send /availability to check free spots, /book to reserve a spot, /cancel to cancel reservation, /pay to pay your parking fee")
+                self.bot.sendMessage(chat_id, "Send /availability to check free spots, /cancel to cancel reservation, /pay to pay your parking fee")
 
 
     def on_callback_query(self, msg):
@@ -236,6 +239,12 @@ class ParkingBot:
              
     def handle_booking(self, chat_id, text):
         status = self.chats[chat_id].status
+        if status == Status.BOOK_LOT:
+            parking_lot_id = text.lstrip('/')
+            chat = self.chats[chat_id]
+            chat.add_lot(parking_lot_id)
+            chat.set_status(Status.BOOK_PLATE)
+            self.bot.sendMessage(chat_id, "Please enter your plate number:")
         if status == Status.BOOK_PLATE:
             plate_license = text.replace(" ", "").upper()
             chat = self.chats[chat_id]
@@ -251,7 +260,7 @@ class ParkingBot:
             self.bot.sendMessage(chat_id, "Choose arrival time (The reservation will ONLY be valid BEFORE the selected time!):", reply_markup=keyboard)
         elif status == Status.BOOK_TIME:
             time_text = text.split('_')[1]
-            expecting_time = datetime.strptime(time_text, "%Y-%m-%d %H:%M:%S").replace(tzinfo=italy_tz)  
+            expecting_time = datetime.strptime(time_text, "%Y-%m-%d %H:%M:%S")
             chat = self.chats[chat_id]
             chat.set_expecting_time(expecting_time)  
             keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text = 'Confirm', callback_data = 'Confirm'), InlineKeyboardButton(text = 'Modify', callback_data = 'Modify'), InlineKeyboardButton(text = 'Quit', callback_data = 'Quit')]])
@@ -280,8 +289,8 @@ class ParkingBot:
     def confirm (self, chat_id, msg):
         chat = self.chats[chat_id]
         if self.chats[chat_id].status == Status.AVAILABILITY:
-            self.bot.sendMessage(chat_id, msg)
-            self.bot.sendMessage(chat_id, "Send /availability to check free spots, /book to reserve a spot, /cancel to cancel reservation, /pay to pay your parking fee")
+            self.bot.sendMessage(chat_id, msg[1])
+            self.bot.sendMessage(chat_id, "Send /book to reserve a spot, /cancel to cancel reservation, /pay to pay your parking fee")
             return
         elif self.chats[chat_id].status == Status.PAY_CHECK:
             if msg[0]:
@@ -289,6 +298,7 @@ class ParkingBot:
                 self.bot.sendMessage(chat_id, msg[1], reply_markup=keyboard) 
             else:
                 self.bot.sendMessage(chat_id, msg[1])
+                self.chats[chat_id].set_status(None)
             return
         elif self.chats[chat_id].status == Status.PAY_PAY:
             if msg[0]:
@@ -296,11 +306,25 @@ class ParkingBot:
             else:
                 self.bot.sendMessage(chat_id, msg[1])
             return
+        elif self.chats[chat_id].status == Status.BOOK_TIME:
+            if msg[0]:
+                self.bot.sendMessage(chat_id, msg[1])
+                chat.set_status(None)
+            else:
+                self.bot.sendMessage(chat_id, msg[1])
+            return
+        elif self.chats[chat_id].status == Status.CANCEL:
+            if msg[0]:
+                self.bot.sendMessage(chat_id, msg[1])
+                chat.set_status(None)
+            else:
+                self.bot.sendMessage(chat_id, msg[1])
+            return
         self.chats[chat_id].set_status(None)   
         del self.chats[chat_id] 
 
-    def generate_time(self, n=4, tz=italy_tz):
-        now = datetime.now(tz)
+    def generate_time(self, n=4):
+        now = datetime.now()
         ## start xx:yy
         ## start = now.minute + self.book_start_time
         ## if yy < 30, start = xx:30

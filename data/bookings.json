@@ -1,18 +1,11 @@
 {
-    "BKSNBF": {
-        "plate_license": "BKSNBF",
-        "expecting_time": "2025-05-21 02:30:00",
-        "entry_time": null,
-        "payment_time": null,
-        "exit_time": null,
-        "total_payment": "0.0"
-    },
-    "JAKBJCME": {
-        "plate_license": "JAKBJCME",
-        "expecting_time": "2025-05-21 02:30:00",
-        "entry_time": null,
-        "payment_time": null,
-        "exit_time": null,
-        "total_payment": "0.0"
+    "AAAAA": {
+        "plate_license": "AAAAA",
+        "lot_id": "lot_1",
+        "expecting_time": null,
+        "entry_time": "2025-06-07 19:28:28",
+        "payment_time": "2025-06-07 19:29:42",
+        "exit_time": "2025-06-07 19:30:31",
+        "total_payment": "1.5"
     }
 }

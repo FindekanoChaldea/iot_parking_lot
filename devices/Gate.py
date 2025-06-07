@@ -39,7 +39,8 @@ class Gate():
         URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic, notice_interval = data
         self.client = client(client_id, broker, port, self)
         self.client.start()
-        time.sleep(120)
+        print(f'gate {client_id} initialized')
+        time.sleep(1)
         self.topic = info_topic
         self.client.subscribe(command_topic)
         self.status = Status.CLOSE
@@ -55,11 +56,9 @@ class Gate():
         except Exception as e:
             print("Catalog connection failed:", e)
         self.notice_interval = notice_interval  # seconds
-        print('gate initialized')
         
     def publish(self, message):
         self.client.publish(self.topic, message)
-        print(f"Published message: {message} to topic: {self.topic}")
     
     def open_close(self):
         print("Gate is opening...")
@@ -80,16 +79,16 @@ class Gate():
             elif topic.split('/')[-3] == 'entrance':
                 print("\nno more parking lots available\n")
         else :
-            Exception ("Unknown command received")
+            print ("Unknown command received")
                 
     def run(self):
         while True:
             time.sleep(self.notice_interval)
             try:
                 res = requests.post(self.URL_UPDATE, json = self.payload) 
-                print("[Sensor] Data sent:", res.text)
+                print("[Gate] Status updated")
             except Exception as e:
-                print("[Sensor] POST failed:", e)      
+                print("[Gate] Status POST failed:", e)      
              
     
         

@@ -36,7 +36,15 @@ class Gate():
             return
 
         # if successful, get the broker information and initialize the client
-        URL_UPDATE, broker, port, client_id, parking_lot_id, info_topic, command_topic, notice_interval = data
+        if data and data[0]:
+            URL_UPDATE = data[1]['URL']
+            broker = data[1]['broker']
+            port = data[1]['port']
+            client_id = data[1]['id']
+            parking_lot_id = data[1]['parking_lot_id']
+            info_topic = data[1]['info_topic']
+            command_topic = data[1]['command_topic']
+            notice_interval = data[1]['notice_interval']
         self.client = client(client_id, broker, port, self)
         self.client.start()
         print(f'gate {client_id} initialized')
@@ -83,12 +91,15 @@ class Gate():
                 
     def run(self):
         while True:
-            time.sleep(self.notice_interval)
-            try:
-                res = requests.post(self.URL_UPDATE, json = self.payload) 
-                print("[Gate] Status updated")
-            except Exception as e:
-                print("[Gate] Status POST failed:", e)      
+            if self.notice_interval:
+                time.sleep(self.notice_interval)
+                try:
+                    res = requests.post(self.URL_UPDATE, json = self.payload) 
+                    print("[Gate] Status updated")
+                except Exception as e:
+                    print("[Gate] Status POST failed:", e)  
+            else:
+                time.sleep(30)    
              
     
         

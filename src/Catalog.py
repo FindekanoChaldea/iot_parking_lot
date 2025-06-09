@@ -10,14 +10,13 @@ import cherrypy
 from TimeControl import TimeControl
 
 class Device: 
-    def __init__(self, id, parking_lot_id, info_topic, command_topic, URL):
+    def __init__(self, id, parking_lot_id, info_topic, command_topic, URL_UPDATE):
         self.id = id
         self.parking_lot_id = parking_lot_id
         self.info_topic = info_topic
         self.command_topic = command_topic
-        self.URL = URL
+        self.URL = URL_UPDATE
         self.paired = False  # Indicates if the device is paired within a passage
-
     def to_dict(self):
         return {
             "client_id": self.id,
@@ -62,9 +61,16 @@ class Passage:
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
     def info(self):
-        return [self.parking_lot_id, self.id,
-                self.scanner.id,self.scanner.info_topic, self.scanner.command_topic,
-                self.gate.id, self.gate.info_topic, self.gate.command_topic]  
+        return {
+            "parking_lot_id": self.parking_lot_id,
+            "id": self.id,
+            "scanner_id": self.scanner.id,
+            "info_topic_scanner": self.scanner.info_topic,
+            "command_topic_scanner": self.scanner.command_topic,
+            "gate_id": self.gate.id,
+            "info_topic_gate": self.gate.info_topic,
+            "command_topic_gate": self.gate.command_topic
+        }
     def delete(self, path):
         # find the passage in the file and delete it
         if os.path.exists(path):
@@ -88,8 +94,6 @@ class Bot:
         self.token = token
         self.info_topic = info_topic
         self.command_topic = command_topic
-    def info(self):
-        return [self.id, self.token, self.info_topic, self.command_topic]  
     def to_dict(self):
         return {
             "id": self.id,
@@ -129,49 +133,42 @@ class Bot:
 class Catalog:
     
     class ParkingConfig:
-        def __init__(self, catalog, list):
-            [
-            # parking properties
-            self.parking_id,
-            self.broker,
-            self.port,
-            self.catalog_uri,
-            self.passage_uri,
-            self.lot_uri,
-            self.free_stop,
-            self.check_pay_interval,
-            self.booking_expire_time,
-            self.hourly_rate,
-            self.book_filter_interval,
-            self.payment_filter_interval,
-            # catalog
-            self.device_inactive_limit,
-            
-            #devices
-            self.book_start_time,
-            self.time_out,
-            self.notice_interval
-            ] =list
+        def __init__(self, catalog, dict):
+            self.parking_id = dict["parking_id"]
+            self.broker = dict["broker"]
+            self.port = dict["port"]
+            self.catalog_uri = dict["catalog_uri"]
+            self.passage_uri = dict["passage_uri"]
+            self.lot_uri = dict["lot_uri"]
+            self.free_stop = dict["free_stop"]
+            self.check_pay_interval = dict["check_pay_interval"]
+            self.booking_expire_time = dict["booking_expire_time"]
+            self.hourly_rate = dict["hourly_rate"]
+            self.book_filter_interval = dict["book_filter_interval"]
+            self.payment_filter_interval = dict["payment_filter_interval"]
+            self.device_inactive_limit = dict["device_inactive_limit"]
+            self.book_start_time = dict["book_start_time"]
+            self.time_out = dict["time_out"]
+            self.notice_interval = dict["notice_interval"]
             self.URL_CATALOG = f"{catalog.URL}{self.catalog_uri}"
             self.URL_PASSAGE = f"{catalog.URL}{self.passage_uri}"
             self.URL_LOT = f"{catalog.URL}{self.lot_uri}"
             
         def parking_properties(self):
-            return [
-                self.parking_id,
-                self.broker,
-                self.port,
-                self.URL_CATALOG,
-                self.URL_PASSAGE,
-                self.URL_LOT,
-                
-                self.free_stop,
-                self.check_pay_interval,        
-                self.booking_expire_time,
-                self.hourly_rate,
-                self.book_filter_interval,
-                self.payment_filter_interval,
-            ]
+            return {
+                "parking_id": self.parking_id,
+                "broker": self.broker,
+                "port": self.port,
+                "URL_CATALOG": self.URL_CATALOG,
+                "URL_PASSAGE": self.URL_PASSAGE,
+                "URL_LOT": self.URL_LOT,
+                "free_stop": self.free_stop,
+                "check_pay_interval": self.check_pay_interval,
+                "booking_expire_time": self.booking_expire_time,
+                "hourly_rate": self.hourly_rate,
+                "book_filter_interval": self.book_filter_interval,
+                "payment_filter_interval": self.payment_filter_interval,
+            }
     exposed = True 
     def __init__(self, URL, path):
         # utilities
@@ -193,9 +190,9 @@ class Catalog:
         self.bot = None
         
         
-    def load_config(self, list):
+    def load_config(self, dict):
         try:
-            self.parking_config = self.ParkingConfig(self,list)
+            self.parking_config = self.ParkingConfig(self,dict)
             self.listen_devices()
             return [True, "configuration loaded"]
         except Exception as e:
@@ -233,7 +230,7 @@ class Catalog:
         self.parking_lots[id] = num
         self.devices[id] = {}
         self.passages[id] = {}
-        msg2 = [True, [id, num]]
+        msg2 = [True, {"id": id, "num": num}]
         timeout, _ = self.get_response(self.parking_config.URL_LOT, 'POST', 5, msg2)
         if timeout:
             return [False, f"Failed to connect to the ControlCenter..."]
@@ -281,7 +278,16 @@ class Catalog:
             device = Device(id, parking_lot_id, info_topic, command_topic, URL)
             msg1 =  [True, f"New {in_out} {type} {id} added to parking lot {parking_lot_id}."]
             # Send the device information to the device
-            msg2 = [URL, self.parking_config.broker, self.parking_config.port, id, parking_lot_id, info_topic, command_topic, self.parking_config.notice_interval ]
+            msg2 = [True, {
+                "URL": URL,
+                "broker": self.parking_config.broker,
+                "port": self.parking_config.port,
+                "id": id,
+                "parking_lot_id": parking_lot_id,
+                "info_topic": info_topic,
+                "command_topic": command_topic,
+                "notice_interval": self.parking_config.notice_interval
+            }]
             # Add the device to the catalog 
             self.devices[parking_lot_id][id] = device
             print(f"New {in_out} {type} {id} added to parking lot {parking_lot_id}.")
@@ -362,7 +368,7 @@ class Catalog:
         # Check if the is already a bot
         if self.bot:
             msg1 = [False, f"Telegram bot already exists."]
-            msg2 = [False, "Please remove the existing bot first."]
+            msg2 = [False, {"message": "Please remove the existing bot first."}]
         else:
             # Create a new bot
             info_topic = f"parking/{id}/info"
@@ -373,10 +379,21 @@ class Catalog:
                 self.bot.save(self.PATH)
                 msg1 =  [True, f"New bot {id} added."]
                 # Send the bot information to the device
-                msg2 = [True, [token, URL, self.parking_config.broker, self.parking_config.port, id, info_topic, command_topic, self.parking_config.book_start_time, self.parking_config.time_out, self.parking_config.notice_interval]]
+                msg2 = [True, {
+                    "token": token,
+                    "URL": URL,
+                    "broker": self.parking_config.broker,
+                    "port": self.parking_config.port,
+                    "id": id,
+                    "info_topic": info_topic,
+                    "command_topic": command_topic,
+                    "book_start_time": self.parking_config.book_start_time,
+                    "time_out": self.parking_config.time_out,
+                    "notice_interval": self.parking_config.notice_interval
+                }]
             else:
                 msg1 = [False, f"Failed to connect the Control Center."]
-                msg2 = [False, "Please try again."]
+                msg2 = [False, {"message": "Please try again."}]
         return msg1 , msg2
     
     def delete_bot(self):
@@ -399,7 +416,11 @@ class Catalog:
         return msg1
     
     def activate_bot(self):
-        msg = [True, [self.bot.id, self.bot.info_topic, self.bot.command_topic]]
+        msg = [True, {
+            "id": self.bot.id,
+            "info_topic": self.bot.info_topic,
+            "command_topic": self.bot.command_topic
+        }]
         timeout, _ = self.get_response(F"{self.URL}/addbot", 'POST', 5, msg)
         if timeout:
             return False
@@ -414,6 +435,8 @@ class Catalog:
         else:
             # Format the data for display
             show = ''
+            if self.bot:
+                show += f"Telegram Bot ID: {self.bot.id}    Info_topic: {self.bot.info_topic}    Command_topic: {self.bot.command_topic}\n"
             for lot_id, devices in data.items():
                 show += f"Parking Lot ID: {lot_id} {self.parking_lots[lot_id]} spots\n"
                 for device_id, device in devices.items():
@@ -458,7 +481,10 @@ class Catalog:
                                     res = requests.get(URL)
                                     if res and res.ok:
                                         data = res.json()
-                                        id, parking_lot_id, info_topic, command_topic = data
+                                        id = data.get("client_id")
+                                        parking_lot_id = data.get("parking_lot_id")
+                                        info_topic = data.get("info_topic")
+                                        command_topic = data.get("command_topic")
                                         if device.id != id or device.parking_lot_id != parking_lot_id or device.info_topic != info_topic or device.command_topic != command_topic:
                                             # Update the device information if it has changed
                                             warning += (
@@ -494,19 +520,6 @@ class Catalog:
                     time.sleep(10)
         threading.Thread(target=listening_thread).start()
    
-    # Check devices every 5 minutes to see if they are still paired
-    # If a device is not paired, remove it from the catalog
-    # This is a background thread that runs indefinitely     
-    # def check_devices(self):
-    #     def check_thread():
-    #         while True:
-    #             time.sleep(self.parking_config.unpaired_time_limit)  # Check every 5 minutes
-    #             for lot in self.devices.values():
-    #                 for device in lot.values():
-    #                     if not device.paired:
-    #                         print(f"Device {device.id} in parking lot {device.parking_lot_id} is not paired for long time, removing from catalog, initiate it again if needed.")
-    #                         self.devices[device.parking_lot_id].pop(device.id, None)
-    #     threading.Thread(target=check_thread).start()
 
     @cherrypy.tools.json_out()
     def GET(self, *uri, **params):
@@ -522,12 +535,9 @@ class Catalog:
         data = cherrypy.request.json
         if not uri:
             if isinstance(data, dict):
-                try:
-                    l = data.get('config', None)
-                    if l:   
-                        return self.load_config(l)
-                except Exception as e:
-                    return[False, f"Failed to load configuration: {e}"]
+                if data.get('action', None) == 'config':
+                    data.pop('config', None) 
+                    return self.load_config(data)
                 
             elif isinstance(data, str):
                 if data.lower() == 'newscanner':
@@ -570,41 +580,48 @@ class Catalog:
             
         elif uri[0] == 'catalog':
             if not self.parking_config:
-                if data[0] == 'config':
-                    return self.load_config(data[1])
-                else: return [False, "Please load configuration first"]
+                return [False, "Please load configuration first"]
             else:
-                if data[0] == 'device':
+                action = data.get('action')
+                if action == 'device':
                     return self.load_device()
-                elif data[0] == 'passage':
+                elif action == 'passage':
                     return self.load_passage()
-                elif data[0] == 'parking_lot':
-                    _, parking_lot_id, num = data
+                elif action == 'parking_lot':
+                    parking_lot_id = data.get('parking_lot_id')
+                    num = data.get('num')
                     return self.add_parking_lot(parking_lot_id, num)
-                elif data[0] == 'pair':
-                    _, scanner_id, gate_id, passage_id, parking_lot_id = data
-                    return self.pair(scanner_id, gate_id, passage_id, parking_lot_id) 
-                elif data[0] == 'unpair':
-                    _, passage_id, parking_lot_id = data
+                elif action == 'pair':
+                    scanner_id = data.get('scanner_id')
+                    gate_id = data.get('gate_id')
+                    passage_id = data.get('passage_id')
+                    parking_lot_id = data.get('parking_lot_id')
+                    return self.pair(scanner_id, gate_id, passage_id, parking_lot_id)
+                elif action == 'unpair':
+                    passage_id = data.get('passage_id')
+                    parking_lot_id = data.get('parking_lot_id')
                     return self.unpair(passage_id, parking_lot_id)
-                elif (data[0] == 'entrance_gate' or data[0] == 'exit_gate' 
-                    or data[0] == 'entrance_scanner' or data[0] == 'exit_scanner'):
-                    in_out, type = data[0].split('_')
-                    _, id, parking_lot_id = data
+                elif action in ('entrance_gate', 'exit_gate', 'entrance_scanner', 'exit_scanner'):
+                    in_out, type = action.split('_')
+                    id = data.get('id')
+                    parking_lot_id = data.get('parking_lot_id')
                     if not self.connecting_device:
                         return [False, "No device is initiating, please intiate the device first."]
-                    else: self.connecting_device.connect_device(id, parking_lot_id, in_out, type)
+                    else:
+                        self.connecting_device.connect_device(id, parking_lot_id, in_out, type)
                     return self.connecting_device.interface_msg
-                elif data[0] == 'delete_device':
-                    _, id, parking_lot_id = data
+                elif action == 'delete_device':
+                    id = data.get('id')
+                    parking_lot_id = data.get('parking_lot_id')
                     return self.delete_device(id, parking_lot_id)
-                elif data[0] == 'bot':
-                    _, id, token = data
+                elif action == 'bot':
+                    id = data.get('id')
+                    token = data.get('token')
                     if not self.connecting_device:
                         return [False,"No device is initiating, please intiate the device first."]
                     self.connecting_device.connect_bot(id, token)
                     return self.connecting_device.interface_msg
-                elif data[0] == 'delete_bot':
+                elif action == 'delete_bot':
                     return self.delete_bot()
                 else:
                     cherrypy.response.status = 400
@@ -638,8 +655,8 @@ if __name__ == "__main__":
 		}
 	}
     # Mount the PaymentService class and start the server
-    cherrypy.server.socket_host = config_loader.RESTful.host
-    cherrypy.server.socket_port = config_loader.RESTful.port
+    cherrypy.server.socket_host = host_RESTful
+    cherrypy.server.socket_port = port_RESTful
     cherrypy.tree.mount(catalog, '/', config)
     cherrypy.engine.start()
     cherrypy.engine.block()

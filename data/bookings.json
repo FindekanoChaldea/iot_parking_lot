@@ -1,11 +1,2 @@
 {
-    "AAAAA": {
-        "plate_license": "AAAAA",
-        "lot_id": "lot_1",
-        "expecting_time": null,
-        "entry_time": "2025-06-07 19:28:28",
-        "payment_time": "2025-06-07 19:29:42",
-        "exit_time": "2025-06-07 19:30:31",
-        "total_payment": "1.5"
-    }
 }

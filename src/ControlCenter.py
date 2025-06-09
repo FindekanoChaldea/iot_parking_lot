@@ -61,24 +61,21 @@ class Parking():
         # RESTFul
         self.URL = URL
         print('connecting to server...')
-        [
-        self.id,
-        self.broker,
-        self.port,
-        self.URL_CATALOG,
-        self.URL_PASSAGE,
-        self.URL_LOT,
-        
-        self.free_stop,
-        self.check_pay_interval,        
-        self.booking_expire_time,
-        self.hourly_rate,
-        self.book_filter_interval,
-        self.payment_filter_interval
-         ] = [None] * 12
+        self.parking_id = None
+        self.broker = None
+        self.port = None
+        self.URL_CATALOG = None
+        self.URL_PASSAGE = None
+        self.URL_LOT = None
+        self.free_stop = None
+        self.check_pay_interval = None
+        self.booking_expire_time = None
+        self.hourly_rate = None
+        self.book_filter_interval = None
+        self.payment_filter_interval = None
         self.load_config()
         
-        self.client = client(self.id, self.broker, self.port, self)
+        self.client = client(self.parking_id, self.broker, self.port, self)
         self.client.start()
         
         self.bot = None
@@ -87,7 +84,7 @@ class Parking():
         # self.passages = {}
         self.parking_lots = {}
         
-        print(f"\n{self.id} initialized, free stop time: {self.free_stop} seconds, hourly rate: {self.hourly_rate} euros\n")
+        print(f"\n{self.parking_id} initialized")
         self.listening_catalog()
         
     def load_config(self):
@@ -103,36 +100,25 @@ class Parking():
                 pass
             time.sleep(3)
         # MQTT client initialization
-        if [
-            self.id,
-            self.broker,
-            self.port,
-            self.URL_CATALOG,
-            self.URL_PASSAGE,
-            self.URL_LOT,
-            self.free_stop,
-            self.check_pay_interval,        
-            self.booking_expire_time,
-            self.hourly_rate,
-            self.book_filter_interval,
-            self.payment_filter_interval,
-        ] != data:
-            [
-                self.id,
-                self.broker,
-                self.port,
-                self.URL_CATALOG,
-                self.URL_PASSAGE,
-                self.URL_LOT,
-                self.free_stop,
-                self.check_pay_interval,        
-                self.booking_expire_time,
-                self.hourly_rate,
-                self.book_filter_interval,
-                self.payment_filter_interval,
-            ] = data
-            print(f"Config loaded: id = {self.id}, broker = {self.broker}, port = {self.port}, URL_CATALOG = {self.URL_CATALOG}, URL_PASSAGE = {self.URL_PASSAGE}, URL_CONFIG = {self.URL_LOT}, free_stop = {self.free_stop}, check_pay_interval = {self.check_pay_interval}, booking_expire_time = {self.booking_expire_time}, hourly_rate = {self.hourly_rate}, book_filter_interval = {self.book_filter_interval}, payment_filter_interval = {self.payment_filter_interval}\n")
-            
+        if data:
+            changed = []
+            loaded = []
+            for key in [
+            "parking_id", "broker", "port", "URL_CATALOG", "URL_PASSAGE", "URL_LOT",
+            "free_stop", "check_pay_interval", "booking_expire_time", "hourly_rate",
+            "book_filter_interval", "payment_filter_interval"
+            ]:
+                old_value = getattr(self, key)
+                new_value = data.get(key, old_value)
+                if old_value is None:
+                    loaded.append(f"{key}: {new_value}")
+                if old_value != new_value:
+                    changed.append(f"{key}: {old_value} -> {new_value}")
+                    setattr(self, key, new_value)
+            if loaded:
+                print("Config loaded:\n" + "\n".join(loaded) + "\n")
+            elif changed:
+                print("Config updated:\n" + "\n".join(changed) + "\n")
     def book(self, lot_id, plate_license, expecting_time):
         if plate_license in self.parking_lots[lot_id].bookings.keys():
             return [False, f"Car {plate_license} already booked at {(self.bookings[plate_license].expecting_time).strftime('%Y-%m-%d %H:%M:%S')}, please cancel it first"]
@@ -159,7 +145,7 @@ class Parking():
         if plate_license in self.parking_lots[lot_id].bookings.keys():
             booking = self.parking_lots[lot_id].bookings[plate_license]
             if booking.is_expired(self.booking_expire_time):
-                print("Booking expired, checking available parking lots")
+                print("\nBooking expired, checking available parking lots\n")
                 del self.parking_lots[lot_id].bookings[plate_license]
                 self.check_in(lot_id,plate_license, passage)
             else:
@@ -167,7 +153,7 @@ class Parking():
                 while not passage.timestamp:
                     time.sleep(0.1)  # Ensure the loop doesn't block indefinitely
                 booking.enter(passage.timestamp)
-                print(f"Booking Car {plate_license} checked in")
+                print(f"\n\nBooking Car {plate_license} checked in\n\n")
                 passage.timestamp = None
                 del self.parking_lots[lot_id].bookings[plate_license]
                 self.parking_lots[lot_id].parkings[plate_license] = booking
@@ -239,7 +225,9 @@ class Parking():
             car = self.parking_lots[lot_id].parkings[plate_license]  
             if car.status == CarStatus.CHECKED:
                 self.publish(passage.command_topic_gate, GateStatus.CLOSE)
-                print("need to pay before exit")
+                print("\nNeed to pay before exit\n")
+                time.sleep(3)
+                self.publish(passage.command_topic_scanner, ScannerStatus.STANDBY)
                 
             elif car.status == CarStatus.PAID or car.status == CarStatus.ENTERED:
                 if (datetime.now() - car.start_time).total_seconds() <= self.free_stop:                
@@ -247,16 +235,22 @@ class Parking():
                     while not passage.timestamp:
                         time.sleep(0.1)  # Ensure the loop doesn't block indefinitely
                     car.exit(passage.timestamp)
-                    print(f"Car {plate_license} exited")
+                    print(f"\n\nCar {plate_license} exited\n\n")
                     passage.timestamp = None             
                     del self.parking_lots[lot_id].parkings[plate_license]
                     self.publish(passage.command_topic_scanner, ScannerStatus.STANDBY)
                 else: 
                     self.publish(passage.command_topic_gate, GateStatus.CLOSE)
-                    print(f"{car.plate_license} stayed more than {math.ceil(self.free_stop/60)} minutes after payment/entering, need to pay")
+                    self.publish(passage.command_topic_scanner, ScannerStatus.STANDBY)
+                    print(f"\n{car.plate_license} stayed more than {math.ceil(self.free_stop/60)} minutes after payment/entering, need to pay\n")
                     car.status = CarStatus.CHARGED                    
             else:
-                self.publish(passage.command_topic_gate, GateStatus.OPEN)
+                self.publish(passage.command_topic_gate, GateStatus.CLOSE)
+                self.publish(passage.command_topic_scanner, ScannerStatus.STANDBY)
+        else:
+            self.publish(passage.command_topic_gate, GateStatus.CLOSE)
+            print(f"\nCar {plate_license} not found in parking records!\n")
+            self.publish(passage.command_topic_scanner, ScannerStatus.STANDBY)
         
     def connect_device(self, lot_id, passage):
         self.parking_lots[lot_id].passages[passage.id] = passage
@@ -416,24 +410,34 @@ class Parking():
                     if res1 and res1.ok:
                         data = res1.json()
                         if data[0]:
-                            parking_lot_id, id, scanner_id, info_topic_scanner, command_topic_scanner, gate_id, info_topic_gate, command_topic_gate = data[1]
+                            passage_info = data[1]
+                            parking_lot_id = passage_info['parking_lot_id']
+                            id = passage_info['id']
+                            scanner_id = passage_info['scanner_id']
+                            info_topic_scanner = passage_info['info_topic_scanner']
+                            command_topic_scanner = passage_info['command_topic_scanner']
+                            gate_id = passage_info['gate_id']
+                            info_topic_gate = passage_info['info_topic_gate']
+                            command_topic_gate = passage_info['command_topic_gate']
                             passage = Passage(parking_lot_id, id, scanner_id, info_topic_scanner, command_topic_scanner, gate_id, info_topic_gate, command_topic_gate)
                             self.connect_device(parking_lot_id, passage)
                             print(f"New passage {id} connected with gate {gate_id} and scanner {scanner_id} ")
                         else:
-                            passage_id = data[1]
+                            passage_id = data[1]['id']
                             self.disconnect_device(passage_id)
                             print(f"Passage {passage_id} disconnected")
                     res2 = requests.get(f"{self.URL}/addbot")
                     if res2 and res2.ok:
                         data = res2.json()
                         if data[0]:
-                            id, info_topic, command_topic = data[1]
+                            id = data[1]['id']
+                            info_topic = data[1]['info_topic']
+                            command_topic = data[1]['command_topic']
                             bot = Bot(id, info_topic, command_topic)
                             self.connect_bot(bot)
                             print(f"New bot {id} connected")
                         else:
-                            bot_id = data[1][0]
+                            bot_id = data[1]['id']
                             if self.bot and self.bot.id == bot_id:
                                 self.client.unsubscribe(self.bot.info_topic)
                                 self.bot = None
@@ -442,11 +446,12 @@ class Parking():
                     if res3 and res3.ok:
                         data = res3.json()
                         if data[0]:
-                            id, num_lots = data[1]
+                            id = data[1]['id']
+                            num_lots = data[1]['num']
                             self.parking_lots[id] = Lot(id, num_lots)
                             print(f"Parking lot {id} added with {num_lots} lots")
                         else:
-                            lot_id = data[1]
+                            lot_id = data[1]['id']
                             if lot_id in self.parking_lots.keys():
                                 del self.parkings[lot_id]
                                 print(f"Parking lot {lot_id} deleted")

@@ -112,7 +112,16 @@ class ParkingBot:
             time.sleep(1)
         # if successful, get the broker information and initialize the client
         if data and data[0]:
-            token, URL_UPDATE, broker, port, client_id, info_topic, command_topic, book_start_time, time_out, notice_interval = data[1]
+            token = data[1]['token']
+            URL_UPDATE = data[1]['URL']
+            broker = data[1]['broker']
+            port = data[1]['port']
+            client_id = data[1]['id']
+            info_topic = data[1]['info_topic']
+            command_topic = data[1]['command_topic']
+            book_start_time = data[1]['book_start_time']
+            time_out = data[1]['time_out']
+            notice_interval = data[1]['notice_interval']
         else:
             print('Failed to connect to the server, exiting...')
             return

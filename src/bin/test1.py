@@ -29,3 +29,14 @@ if __name__ == "__main__":
     test_client.susbscribe("parking/lot_1/entrance/lot_1_entrance_gate_1/command")
     # Keep the script running to listen for messages
     test_client.run()
+    l = [1,2,3,4,5,6,7,8,9,10]
+    for index, item in enumerate(l):
+        test_client.publish(f"test message {index}")
+        time.sleep(1)
+    dict = {"test": "test"}
+    for i in dict.values():
+        test_client.publish(i)
+        time.sleep(1)
+    l.add(11)
+    import random
+    random.randint(-50, 100)

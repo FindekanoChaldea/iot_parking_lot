@@ -1,20 +1,2 @@
 {
-    "AAAAA": {
-        "plate_license": "AAAAA",
-        "lot_id": "lot_1",
-        "expecting_time": null,
-        "entry_time": "2025-06-09 16:29:00",
-        "payment_time": null,
-        "exit_time": "2025-06-09 16:29:19",
-        "total_payment": "0.0"
-    },
-    "BBBBB": {
-        "plate_license": "BBBBB",
-        "lot_id": "lot_1",
-        "expecting_time": null,
-        "entry_time": "2025-06-09 16:30:08",
-        "payment_time": "2025-06-09 16:31:08",
-        "exit_time": "2025-06-09 16:31:53",
-        "total_payment": "1.5"
-    }
 }

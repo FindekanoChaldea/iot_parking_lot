@@ -98,7 +98,7 @@ class Parking():
                     break
             except Exception as e:
                 pass
-            time.sleep(3)
+            time.sleep(1)
         # MQTT client initialization
         if data:
             changed = []
@@ -119,6 +119,7 @@ class Parking():
                 print("Config loaded:\n" + "\n".join(loaded) + "\n")
             elif changed:
                 print("Config updated:\n" + "\n".join(changed) + "\n")
+                
     def book(self, lot_id, plate_license, expecting_time):
         if plate_license in self.parking_lots[lot_id].bookings.keys():
             return [False, f"Car {plate_license} already booked at {(self.bookings[plate_license].expecting_time).strftime('%Y-%m-%d %H:%M:%S')}, please cancel it first"]
@@ -403,8 +404,8 @@ class Parking():
     def listening_catalog(self):
         def listening_thread():
             time.sleep(5)
-            self.load_config()
             while True:
+                self.load_config()
                 try:
                     res1 = requests.get(self.URL_PASSAGE)
                     if res1 and res1.ok:

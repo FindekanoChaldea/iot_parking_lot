@@ -10,7 +10,7 @@ from threading import Lock
 from src.utils import GateStatus as Status
 import threading
 import requests
-from src.TimeControl import TimeControl
+from src.bin.TimeControl import TimeControl
 
 class Gate():
         

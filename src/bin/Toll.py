@@ -7,7 +7,7 @@ import time
 import requests
 import threading
 from src.ParkingMQTT import ParkingMQTT as client
-from src.TimeControl import TimeControl
+from src.bin.TimeControl import TimeControl
 
 class transaction:
     def __init__(self, plate_license, amount, payment_method, time):

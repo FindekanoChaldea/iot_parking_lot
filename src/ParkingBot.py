@@ -8,7 +8,7 @@ import time
 import requests
 import json
 import threading
-from TimeControl import TimeControl
+from utils import TimeControl
 
 class Status:
         START = 'start'

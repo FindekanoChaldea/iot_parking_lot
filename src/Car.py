@@ -1,7 +1,6 @@
 from datetime import datetime
 from Payment import Payment
 from utils import CarStatus as Status, FileManager
-from bin.thingspeak_upload import ThingSpeakClient
 
 class Car:
     # PAID_CARS_FILE = 'tests/paid_cars.json'

@@ -2,7 +2,7 @@ import requests
 import re
 import time
 from config_loader import ConfigLoader
-from TimeControl import TimeControl
+from utils import TimeControl
 
 time_control = TimeControl()
 config_loader = ConfigLoader()

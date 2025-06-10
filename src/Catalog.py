@@ -7,7 +7,7 @@ import threading
 import time
 import math
 import cherrypy
-from TimeControl import TimeControl
+from utils import TimeControl
 
 class Device: 
     def __init__(self, id, parking_lot_id, info_topic, command_topic, URL_UPDATE):

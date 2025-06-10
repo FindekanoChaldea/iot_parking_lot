@@ -3,7 +3,7 @@ import os
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.ParkingMQTT import ParkingMQTT as client
-from src.TimeControl import TimeControl
+from src.bin.TimeControl import TimeControl
 import time
 import json
 from src.utils import ScannerStatus as Status

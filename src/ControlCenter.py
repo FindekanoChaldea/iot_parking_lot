@@ -8,7 +8,7 @@ import json
 import threading
 from utils import CarStatus, ScannerStatus, GateStatus
 import requests
-from TimeControl import TimeControl
+from utils import TimeControl
 
 class Passage:
     def __init__(self, parking_lot_id, id, scanner_id, info_topic_scanner, command_topic_scanner, gate_id, info_topic_gate, command_topic_gate, timestamp = None):

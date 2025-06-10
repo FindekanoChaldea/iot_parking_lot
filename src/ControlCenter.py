@@ -23,7 +23,8 @@ class Passage:
         self.timestamp = timestamp
 
 class Bot:
-    def __init__(self, id, info_topic, command_topic):
+    def __init__(self, id, info_topic, command_topic, URL_UPDATE):
+        self.URL_UPDATE = URL_UPDATE
         self.id = id
         self.info_topic = info_topic
         self.command_topic = command_topic
@@ -434,7 +435,8 @@ class Parking():
                             id = data[1]['id']
                             info_topic = data[1]['info_topic']
                             command_topic = data[1]['command_topic']
-                            bot = Bot(id, info_topic, command_topic)
+                            URL_UPDATE = data[1]['URL_UPDATE']
+                            bot = Bot(id, info_topic, command_topic, URL_UPDATE)
                             self.connect_bot(bot)
                             print(f"New bot {id} connected")
                         else:
@@ -459,24 +461,14 @@ class Parking():
                 except Exception:
                     pass
                 time.sleep(3)
-                # if data[0]:
-                #     parking_lot_id, id, scanner_id, info_topic_scanner, command_topic_scanner, gate_id, info_topic_gate, command_topic_gate = data[1]
-                #     passage = Passage(parking_lot_id, id, scanner_id, info_topic_scanner, command_topic_scanner, gate_id, info_topic_gate, command_topic_gate)
-                #     self.connect_device(passage)
-                #     print(f"New passage {id} connected with gate {gate_id} and scanner {scanner_id} ")
-                # else:
-                #     passage_id = data[1]
-                #     self.disconnect_device(passage_id)
-                #     print(f"Passage {passage_id} disconnected")
-                
         threading.Thread(target=listening_thread).start()
        
        
 if __name__ == '__main__': 
     from config_loader import ConfigLoader
     config_loader = ConfigLoader()
-    host_RESTful = config_loader.RESTful.host
-    port_RESTFUL = config_loader.RESTful.port
+    host_RESTful = config_loader.CHERRYPY.host
+    port_RESTFUL = config_loader.CHERRYPY.port
     URL = f"http://{host_RESTful}:{port_RESTFUL}"
     parking = Parking(URL)
     parking.run()

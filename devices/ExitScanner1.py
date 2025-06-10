@@ -5,8 +5,8 @@ from src.config_loader import ConfigLoader
 
 
 config_loader = ConfigLoader()
-host = config_loader.RESTful.host
-port = config_loader.RESTful.port
+host = config_loader.CHERRYPY.host
+port = config_loader.CHERRYPY.port
 URL = f"http://{host}:{port}"
 exitScanner1 = Scanner(URL)
 threading.Thread(target=exitScanner1.run).start()

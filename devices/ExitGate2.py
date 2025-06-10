@@ -4,8 +4,8 @@ from src.config_loader import ConfigLoader
 
 
 config_loader = ConfigLoader()
-host = config_loader.RESTful.host
-port = config_loader.RESTful.port
+host = config_loader.CHERRYPY.host
+port = config_loader.CHERRYPY.port
 URL = f"http://{host}:{port}"
 exitGate2 = Gate(URL)
 exitGate2.run()

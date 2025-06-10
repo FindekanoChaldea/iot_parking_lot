@@ -113,7 +113,7 @@ class ParkingBot:
         # if successful, get the broker information and initialize the client
         if data and data[0]:
             token = data[1]['token']
-            URL_UPDATE = data[1]['URL']
+            URL_UPDATE = data[1]['URL_UPDATE']
             broker = data[1]['broker']
             port = data[1]['port']
             client_id = data[1]['id']
@@ -132,9 +132,10 @@ class ParkingBot:
 
         self.URL_UPDATE = URL_UPDATE
         self.payload = {
-            "client_id": client_id,
-            "info_topic_gate": info_topic,
-            "command_topic_gate": command_topic
+            "id": client_id,
+            "info_topic": info_topic,
+            "command_topic": command_topic,
+            "token": token
         }
         try:
             res = requests.post(self.URL_UPDATE, json = self.payload) 
@@ -155,6 +156,19 @@ class ParkingBot:
         self.time_out = time_out  # Timeout for each inactive chat session in seconds
         self.notice_interval = notice_interval # seconds
         print('bot initialized')
+        
+    def run(self):
+        while True:
+            if self.notice_interval:
+                time.sleep(self.notice_interval)
+                try:
+                    res = requests.post(self.URL_UPDATE, json = self.payload) 
+                    print("[Telegram Bot] Status updated")
+                except Exception as e:
+                    print("[Telegram Bot] Status POST failed:", e)  
+            else:
+                time.sleep(5)   
+    
     
     def publish(self, message):
         self.client.publish(self.info_topic, message)
@@ -352,10 +366,9 @@ class ParkingBot:
 if __name__ == '__main__':
 
     config_loader = ConfigLoader()
-    host = config_loader.RESTful.host
-    port = config_loader.RESTful.port
+    host = config_loader.CHERRYPY.host
+    port = config_loader.CHERRYPY.port
     URL = f"http://{host}:{port}"
     bot = ParkingBot(URL)
     bot.start()
-    while True:
-        time.sleep(5)
+    bot.run()

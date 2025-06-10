@@ -14,7 +14,7 @@ class ConfigLoader:
             except json.JSONDecodeError:
                 pass
         self.MQTT = self.MQTT(self)
-        self.RESTful = self.RESTful(self)
+        self.CHERRYPY = self.CHERRYPY(self)
         self.telegram_bot_token = self.config['telegram_bot_token']
         
     class MQTT:
@@ -23,14 +23,14 @@ class ConfigLoader:
             self.broker = config_loader.config['MQTT']['broker']
             self.port = config_loader.config['MQTT']['port']
     
-    class RESTful:
+    class CHERRYPY:
         def __init__(self, config_loader):
             self.config_loader = config_loader
-            self.host = config_loader.config['RESTful']['host']
-            self.port = config_loader.config['RESTful']['port']
-            self.catalog_uri = config_loader.config['RESTful']['catalog_uri']
-            self.passage_uri = config_loader.config['RESTful']['passage_uri']
-            self.lot_uri = config_loader.config['RESTful']['lot_uri']
+            self.host = config_loader.config['CHERRYPY']['host']
+            self.port = config_loader.config['CHERRYPY']['port']
+            self.catalog_uri = config_loader.config['CHERRYPY']['catalog_uri']
+            self.passage_uri = config_loader.config['CHERRYPY']['passage_uri']
+            self.lot_uri = config_loader.config['CHERRYPY']['lot_uri']
             
     class Bot:
         def __init__(self, config_loader):

@@ -2,15 +2,11 @@
     "_comment": "This is a sample json file for the settings.",
 
     "telegram_bot_token": "7650726152:AAEeWUFX4MnC0P0iul_aNlJu5zYMkmb5cqc",
-    "thingspeak": {
-      "channel_id": "2952378",
-      "api_key": "G0BK8P0ST9KHYR7H"
-    },
     "MQTT":{
       "broker": "mqtt.eclipseprojects.io",
       "port": 1883
     },
-    "RESTful": {
+    "CHERRYPY": {
       "host": "172.20.10.2",
       "port": 8080,
       "lot_uri": "/lot",

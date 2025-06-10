@@ -15,14 +15,19 @@ class Device:
         self.parking_lot_id = parking_lot_id
         self.info_topic = info_topic
         self.command_topic = command_topic
-        self.URL = URL_UPDATE
+        self.URL_UPDATE = URL_UPDATE
         self.paired = False  # Indicates if the device is paired within a passage
+        self.passage = None  # Reference to the passage if paired
+        self.inactive = None  # Last active time of the device, used to check if the device is inactive
+    def mark(self, time):
+        self.inactive = time  # Record the last active time of the device
     def to_dict(self):
         return {
             "client_id": self.id,
             "parking_lot_id": self.parking_lot_id,
             "info_topic": self.info_topic,
             "command_topic": self.command_topic,
+            "URL_UPDATE": self.URL_UPDATE,
         }
         
 class Passage:
@@ -31,12 +36,16 @@ class Passage:
         self.parking_lot_id = parking_lot_id
         self.scanner = scanner
         self.scanner.paired = True
+        self.scanner.passage = self
         self.gate = gate
         self.gate.paired = True
+        self.gate.passage = self
         
     def unpair(self):
         self.scanner.paired = False
+        self.scanner.passage = None
         self.gate.paired = False
+        self.gate.passage = None
         
     def save(self, path):
         if os.path.exists(path):
@@ -89,17 +98,22 @@ class Passage:
                 return False
      
 class Bot:
-    def __init__(self, id, token, info_topic, command_topic):
+    def __init__(self, id, token, info_topic, command_topic, URL_UPDATE):
         self.id = id
         self.token = token
         self.info_topic = info_topic
         self.command_topic = command_topic
-    def to_dict(self):
+        self.URL_UPDATE = URL_UPDATE
+        self.inactive = None  # Last active time of the bot, used to check if the bot is inactive
+    def mark(self, time):
+        self.inactive = time  # Record the last active time of the device 
+    def info(self):
         return {
             "id": self.id,
             "token": self.token,
             "info_topic": self.info_topic,
             "command_topic": self.command_topic,
+            "URL_UPDATE": self.URL_UPDATE
         }   
     def save(self, path):
         if os.path.exists(path):
@@ -111,7 +125,7 @@ class Bot:
         else:
             data = {}
         # Save the bot under its ID
-        data[self.id] = self.to_dict()
+        data[self.id] = self.info()
         # Write back to file
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
@@ -177,7 +191,7 @@ class Catalog:
         self.PATH = self.fileManager.abpath(path)
         self.parking_config = None
         
-        # RESTful
+        # CHERRYPY
         self.last_post = {}
         # check if the device is initiating and the command is confirmed
         self.connecting_device = None
@@ -194,6 +208,7 @@ class Catalog:
         try:
             self.parking_config = self.ParkingConfig(self,dict)
             self.listen_devices()
+            self.listen_bot()
             return [True, "configuration loaded"]
         except Exception as e:
             return[False, f"Failed to load configuration: {e}"]
@@ -279,7 +294,7 @@ class Catalog:
             msg1 =  [True, f"New {in_out} {type} {id} added to parking lot {parking_lot_id}."]
             # Send the device information to the device
             msg2 = [True, {
-                "URL": URL,
+                "URL_UPDATE": URL,
                 "broker": self.parking_config.broker,
                 "port": self.parking_config.port,
                 "id": id,
@@ -374,14 +389,14 @@ class Catalog:
             info_topic = f"parking/{id}/info"
             command_topic = f"parking/{id}/command"
             URL = f"{self.URL}/{id}"
-            self.bot = Bot(id, token, info_topic, command_topic)
+            self.bot = Bot(id, token, info_topic, command_topic, URL)
             if self.activate_bot():
                 self.bot.save(self.PATH)
                 msg1 =  [True, f"New bot {id} added."]
                 # Send the bot information to the device
                 msg2 = [True, {
                     "token": token,
-                    "URL": URL,
+                    "URL_UPDATE": URL,
                     "broker": self.parking_config.broker,
                     "port": self.parking_config.port,
                     "id": id,
@@ -419,7 +434,8 @@ class Catalog:
         msg = [True, {
             "id": self.bot.id,
             "info_topic": self.bot.info_topic,
-            "command_topic": self.bot.command_topic
+            "command_topic": self.bot.command_topic,
+            "URL_UPDATE": self.bot.URL_UPDATE
         }]
         timeout, _ = self.get_response(F"{self.URL}/addbot", 'POST', 5, msg)
         if timeout:
@@ -462,62 +478,106 @@ class Catalog:
     
     # Continuously listen for changes in device configurations
     # If a device configuration changes unexpectly, raise a warning
-    # If a device does not respond for 5 minutes, mark it as not responding
+    # If a device does not respond for device_inactive_limit, warn and disconnect it
     # This is a background thread that runs indefinitely
     def listen_devices(self):
         def listening_thread():
             # Continuously listen for new devices or passages
             while True:
-                start = time.time()
-                while True:
-                    try:
-                        warning = ''
-                        status = ''
-                        issue = False
-                        for lot in self.passages.values():
-                            for passage in lot.values():
-                                for device in [passage.scanner, passage.gate]:
-                                    URL = device.URL_UPDATE
-                                    res = requests.get(URL)
-                                    if res and res.ok:
-                                        data = res.json()
-                                        id = data.get("client_id")
-                                        parking_lot_id = data.get("parking_lot_id")
-                                        info_topic = data.get("info_topic")
-                                        command_topic = data.get("command_topic")
-                                        if device.id != id or device.parking_lot_id != parking_lot_id or device.info_topic != info_topic or device.command_topic != command_topic:
-                                            # Update the device information if it has changed
-                                            warning += (
-                                                f"Device {device.id} in {device.parking_lot_id} configuration was changed,\n"
-                                                f"from\n"
-                                                f"    ID: {device.id}, Patking lot: {device.parking_lot_id}, Info Topic: {device.info_topic}, Command Topic: {device.command_topic}\n"
-                                                f"to\n"
-                                                f"    ID: {id}, Patking lot: {parking_lot_id}, Info Topic: {info_topic}, Command Topic: {command_topic}\n"
-                                                f"Please check the device configuration.\n"
-                                            )
-                                        else:
-                                            status += (
-                                                f"Device {device.id} in {device.parking_lot_id} is active.\n"
-                                            )
-                                    else:
-                                        now = time.time()
-                                        if now - start > self.parking_config.device_inactive_limit:  # If the device has not responded for within given minutes
-                                            if device.paired:
-                                                self.unpair(passage.id, device.parking_lot_id)
-                                                warning += (
-                                                    f"Device {device.id} in {device.parking_lot_id} is not responding for {math.ceil(self.parking_config.device_inactive_limit/60)} miniutes.\n"
-                                                    f"Device is deleted from Catalog.\n"
-                                                )
-                                            else: 
-                                                self.delete_device(device.id, device.parking_lot_id)
-                                                warning += (
-                                                    f"Device {device.id} in {device.parking_lot_id} is not responding for {math.ceil(self.parking_config.device_inactive_limit/60)} miniutes.\n"
-                                                    f"All devices from the passage {passage.id} are deleted from Catalog.\n"
-                                                )
-                        print(status + warning)  
-                    except Exception:
-                        pass   
-                    time.sleep(10)
+                time.sleep(3)
+                try:
+                    warning = ''
+                    status = ''
+                    now = time.time()
+                    to_delete = []
+                    # Check all devices in the catalog
+                    for lot in self.devices.values():
+                        for device in lot.values():
+                            URL = device.URL_UPDATE
+                            res = requests.get(URL)
+                            if res and res.ok:
+                                data = res.json()
+                                id = data.get("id")
+                                parking_lot_id = data.get("parking_lot_id")
+                                info_topic = data.get("info_topic")
+                                command_topic = data.get("command_topic")
+                                if device.id != id or device.parking_lot_id != parking_lot_id or device.info_topic != info_topic or device.command_topic != command_topic:
+                                    # Update the device information if it has changed
+                                    warning += (
+                                        f"Device {device.id} in {device.parking_lot_id} configuration was changed,\n"
+                                        f"from\n"
+                                        f"    ID: {device.id}, Patking lot: {device.parking_lot_id}, Info Topic: {device.info_topic}, Command Topic: {device.command_topic}\n"
+                                        f"to\n"
+                                        f"    ID: {id}, Patking lot: {parking_lot_id}, Info Topic: {info_topic}, Command Topic: {command_topic}\n"
+                                        f"Please check the device configuration.\n"
+                                    )
+                                else:
+                                    status += (
+                                        f"Device {device.id} in {device.parking_lot_id} is active.\n"
+                                    )
+                                device.inactive = None  # Reset the inactive time
+                            else:
+                                if not device.inactive:
+                                    device.mark(now)  # Mark the device as inactive
+                                elif now - device.inactive > self.parking_config.device_inactive_limit:  # If the device has not responded for within given minutes
+                                    if device.paired:
+                                        self.unpair(device.passage.id, device.parking_lot_id)
+                                    warning += (
+                                        f"Device {device.id} in {device.parking_lot_id} is not responding for {math.ceil(self.parking_config.device_inactive_limit/60)} miniutes.\n"
+                                        f"Device is deleted from Catalog.\n"
+                                    )
+                                    to_delete.append((device.id, device.parking_lot_id))
+                    for (device_id, parking_lot_id) in to_delete:
+                        self.delete_device(device_id, parking_lot_id)
+                    print(f"{status}\n{warning}")  
+                except Exception as e:
+                    print(e)
+        threading.Thread(target=listening_thread).start()
+        
+    def listen_bot(self):
+        def listening_thread():
+            # Continuously listen for new devices or passages
+            while True:
+                time.sleep(3)
+                try:
+                    warning = ''
+                    status = ''
+                    now = time.time()
+                    if self.bot:
+                        resbot = requests.get(self.bot.URL_UPDATE)
+                        if resbot and resbot.ok:
+                            data = resbot.json()
+                            id = data.get("id")
+                            token = data.get('token')
+                            info_topic = data.get("info_topic")
+                            command_topic = data.get("command_topic")
+                            if self.bot.id != id or self.bot.token != token or self.bot.info_topic != info_topic or self.bot.command_topic != command_topic:
+                                # Update the bot information if it has changed
+                                warning += (
+                                    f"Bot {self.bot.id} configuration was changed,\n"
+                                    f"from\n"
+                                    f"    ID: {self.bot.id}, Token: {self.bot.token}, Info Topic: {self.bot.info_topic}, Command Topic: {self.bot.command_topic}\n"
+                                    f"to\n"
+                                    f"    ID: {id}, Token: {token}, Info Topic: {info_topic}, Command Topic: {command_topic}\n"
+                                    f"Please check the bot configuration.\n"
+                                )
+                            else:
+                                status += (
+                                    f"Bot {self.bot.id} is active.\n"
+                                )
+                            self.bot.inactive = None  # Reset the inactive time
+                        else:
+                            if not self.bot.inactive:
+                                self.bot.mark(now)  # Mark the device as inactive
+                            elif now - self.bot.inactive > self.parking_config.device_inactive_limit:
+                                warning += (
+                                    f"Bot {self.bot.id} is not responding for {math.ceil(self.parking_config.device_inactive_limit/60)} miniutes.\n"
+                                    f"Bot is deleted from Catalog.\n"
+                                )
+                                self.delete_bot()
+                    print(f"{status}\n{warning}")  
+                except Exception as e:
+                    print(e)
         threading.Thread(target=listening_thread).start()
    
 
@@ -574,9 +634,7 @@ class Catalog:
                     while not self.parking_config:
                         time.sleep(0.5)
                     l = self.parking_config.parking_properties()
-                    if l:
-                        print("Parking properties loaded to ControlCenter successfully.")
-                        return l
+                    return l
             
         elif uri[0] == 'catalog':
             if not self.parking_config:
@@ -634,11 +692,11 @@ class Catalog:
 if __name__ == "__main__":
     
     config_loader = ConfigLoader()
-    host_RESTful = config_loader.RESTful.host
-    port_RESTful = config_loader.RESTful.port
+    host_CHERRYPY = config_loader.CHERRYPY.host
+    port_CHERRYPY = config_loader.CHERRYPY.port
     broker_MQTT = config_loader.MQTT.broker
     port_MQTT = config_loader.MQTT.port
-    URL = f"http://{host_RESTful}:{port_RESTful}"
+    URL = f"http://{host_CHERRYPY}:{port_CHERRYPY}"
     path = 'config/devices.json'
     catalog = Catalog(URL, path)
     
@@ -655,8 +713,8 @@ if __name__ == "__main__":
 		}
 	}
     # Mount the PaymentService class and start the server
-    cherrypy.server.socket_host = host_RESTful
-    cherrypy.server.socket_port = port_RESTful
+    cherrypy.server.socket_host = host_CHERRYPY
+    cherrypy.server.socket_port = port_CHERRYPY
     cherrypy.tree.mount(catalog, '/', config)
     cherrypy.engine.start()
     cherrypy.engine.block()

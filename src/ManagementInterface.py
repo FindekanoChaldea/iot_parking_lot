@@ -5,20 +5,20 @@ from config_loader import ConfigLoader
 from TimeControl import TimeControl
 
 time_control = TimeControl()
-ConfigLoader = ConfigLoader()
-host_RESTful = ConfigLoader.RESTful.host
-port_RESTful = ConfigLoader.RESTful.port
-broker_MQTT = ConfigLoader.MQTT.broker
-port_MQTT = ConfigLoader.MQTT.port
-catalog_uri = ConfigLoader.RESTful.catalog_uri
-passage_uri = ConfigLoader.RESTful.passage_uri
-lot_uri = ConfigLoader.RESTful.lot_uri
+config_loader = ConfigLoader()
+host_CHERRYPY = config_loader.CHERRYPY.host
+port_CHERRYPY = config_loader.CHERRYPY.port
+broker_MQTT = config_loader.MQTT.broker
+port_MQTT = config_loader.MQTT.port
+catalog_uri = config_loader.CHERRYPY.catalog_uri
+passage_uri = config_loader.CHERRYPY.passage_uri
+lot_uri = config_loader.CHERRYPY.lot_uri
 
-URL = f"http://{host_RESTful}:{port_RESTful}"
+URL = f"http://{host_CHERRYPY}:{port_CHERRYPY}"
 URL_CATALOG = f"{URL}{catalog_uri}"
 URL_PASSAGE = f"{URL}{passage_uri}"
 URL_LOT = f"{URL}{lot_uri}"
-token = ConfigLoader.telegram_bot_token
+token = config_loader.telegram_bot_token
 
 class ParkingConfig:
     def __init__(self):
@@ -35,10 +35,10 @@ class ParkingConfig:
             "hourly_rate": 1.50,  # euros
             "book_filter_interval": 600,  # seconds
             "payment_filter_interval": 60,  # seconds
-            "device_inactive_limit": 30,  # Check every 30 s
+            "device_inactive_limit": 10,  # Check every 30 s
             "book_start_time": 30,
             "time_out": 300,
-            "notice_interval": 20
+            "notice_interval": 5
         }
     
     def load_config(self):

@@ -17,6 +17,7 @@ class Gate():
     def __init__(self, URL):
         self.time_control = TimeControl()
         self.URL = URL
+        self.notice_interval = None
         # continuously try to connect to the server until successful for 60 seconds
         print('connecting to server...')
         data = None
@@ -37,7 +38,7 @@ class Gate():
 
         # if successful, get the broker information and initialize the client
         if data and data[0]:
-            URL_UPDATE = data[1]['URL']
+            URL_UPDATE = data[1]['URL_UPDATE']
             broker = data[1]['broker']
             port = data[1]['port']
             client_id = data[1]['id']
@@ -54,10 +55,10 @@ class Gate():
         self.status = Status.CLOSE
         self.URL_UPDATE = URL_UPDATE
         self.payload = {
-            "client_id": client_id,
+            "id": client_id,
             "parking_lot_id": parking_lot_id,
-            "info_topic_gate": info_topic,
-            "command_topic_gate": command_topic
+            "info_topic": info_topic,
+            "command_topic": command_topic
         }
         try:
             res = requests.post(self.URL_UPDATE, json = self.payload) 
@@ -99,7 +100,7 @@ class Gate():
                 except Exception as e:
                     print("[Gate] Status POST failed:", e)  
             else:
-                time.sleep(30)    
+                time.sleep(5)    
              
     
         
